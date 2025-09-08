@@ -141,7 +141,7 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
                   : 0;
 
                 return (
-                <Collapsible asChild key={producto.id}>
+                <Collapsible asChild key={producto.id} tagName="tbody">
                   <>
                     <TableRow>
                       <TableCell>
