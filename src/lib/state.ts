@@ -26,5 +26,5 @@ export const clientesAtom = atom<Cliente[]>(clientesIniciales);
 export const empleadosAtom = atom<Empleado[]>(empleadosIniciales);
 
 // Atom to track the currently "logged-in" or active employee.
-// We default to the first employee for now.
-export const empleadoActivoAtom = atom<Empleado | null>(empleadosIniciales[0] || null);
+// It starts as null, forcing a login.
+export const empleadoActivoAtom = atom<Empleado | null>(null);

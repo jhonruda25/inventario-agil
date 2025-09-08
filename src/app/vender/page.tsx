@@ -20,6 +20,7 @@ import {
   UserPlus,
   UserX,
   UserCog,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +83,7 @@ import type { Producto, Variante, Venta, CarritoItem, Cliente } from "@/lib/type
 import { useToast } from "@/hooks/use-toast";
 import { useAtom } from 'jotai'
 import { ventasAtom, productosAtom, clientesAtom, empleadoActivoAtom } from "@/lib/state";
+import { useRouter } from "next/navigation";
 
 export default function VenderPage() {
   const [productos, setProductos] = useAtom(productosAtom);
@@ -99,7 +101,8 @@ export default function VenderPage() {
   const [dialogoTicketAbierto, setDialogoTicketAbierto] = React.useState(false);
   
   const [, setVentas] = useAtom(ventasAtom);
-  const [empleadoActivo] = useAtom(empleadoActivoAtom);
+  const [empleadoActivo, setEmpleadoActivo] = useAtom(empleadoActivoAtom);
+  const router = useRouter();
 
 
   const [descuentoPorcentaje, setDescuentoPorcentaje] = React.useState<number>(0);
@@ -338,6 +341,11 @@ export default function VenderPage() {
     // Esto abrirá el diálogo de impresión del navegador
     window.print();
  };
+ 
+ const handleLogout = () => {
+    setEmpleadoActivo(null);
+    router.push('/login');
+ }
 
  const [open, setOpen] = React.useState(false)
 
@@ -480,13 +488,12 @@ export default function VenderPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+              <DropdownMenuLabel>{empleadoActivo?.nombre}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Cambiar Usuario</DropdownMenuItem>
-              <DropdownMenuItem>Ajustes</DropdownMenuItem>
-              <DropdownMenuItem>Soporte</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Cerrar Sesión</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
