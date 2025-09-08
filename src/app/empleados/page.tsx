@@ -14,8 +14,10 @@ import {
   MoreHorizontal,
   PlusCircle,
   UserCog,
+  LogOut,
 } from 'lucide-react'
 import { useAtom } from 'jotai'
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -45,13 +47,15 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 
-import { empleadosAtom } from "@/lib/state"
+import { empleadosAtom, empleadoActivoAtom } from "@/lib/state"
 import type { Empleado } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { DialogoEmpleado } from "@/components/empleados/dialogo-empleado"
 
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useAtom(empleadosAtom)
+  const [empleadoActivo, setEmpleadoActivo] = useAtom(empleadoActivoAtom)
+  const router = useRouter()
   const { toast } = useToast()
 
   const [dialogoAbierto, setDialogoAbierto] = React.useState(false)
@@ -93,6 +97,11 @@ export default function EmpleadosPage() {
               title: 'Empleado eliminado',
           })
       }
+  }
+
+  const handleLogout = () => {
+    setEmpleadoActivo(null);
+    router.push('/login');
   }
 
   return (
@@ -215,12 +224,12 @@ export default function EmpleadosPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+              <DropdownMenuLabel>{empleadoActivo?.nombre}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Ajustes</DropdownMenuItem>
-              <DropdownMenuItem>Soporte</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Cerrar Sesión</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
@@ -312,3 +321,5 @@ export default function EmpleadosPage() {
     </div>
   )
 }
+
+    

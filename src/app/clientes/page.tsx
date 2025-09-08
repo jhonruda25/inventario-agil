@@ -14,8 +14,10 @@ import {
   MoreHorizontal,
   PlusCircle,
   UserCog,
+  LogOut,
 } from 'lucide-react'
 import { useAtom } from 'jotai'
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -44,7 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { clientesAtom, ventasAtom } from "@/lib/state"
+import { clientesAtom, ventasAtom, empleadoActivoAtom } from "@/lib/state"
 import type { Cliente } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { DialogoCliente } from "@/components/clientes/dialogo-cliente"
@@ -61,6 +63,8 @@ const formatCurrency = (amount: number) => {
 export default function ClientesPage() {
   const [clientes, setClientes] = useAtom(clientesAtom)
   const [ventas] = useAtom(ventasAtom)
+  const [empleadoActivo, setEmpleadoActivo] = useAtom(empleadoActivoAtom)
+  const router = useRouter()
   const { toast } = useToast()
 
   const [dialogoAbierto, setDialogoAbierto] = React.useState(false)
@@ -103,6 +107,11 @@ export default function ClientesPage() {
         gastoTotal,
         ultimaCompra: ultimaCompra ? ultimaCompra.toLocaleDateString('es-CO') : 'N/A'
     }
+  }
+
+  const handleLogout = () => {
+    setEmpleadoActivo(null);
+    router.push('/login');
   }
 
 
@@ -226,12 +235,12 @@ export default function ClientesPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+              <DropdownMenuLabel>{empleadoActivo?.nombre}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Ajustes</DropdownMenuItem>
-              <DropdownMenuItem>Soporte</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Cerrar Sesión</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
@@ -333,3 +342,5 @@ export default function ClientesPage() {
     </div>
   )
 }
+
+    

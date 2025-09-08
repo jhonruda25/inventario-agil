@@ -1,5 +1,8 @@
 
+'use client'
+
 import Link from 'next/link'
+import * as React from 'react'
 import {
   CircleUser,
   Menu,
@@ -8,8 +11,12 @@ import {
   ShoppingCart,
   LineChart,
   Users,
-  UserCog
+  UserCog,
+  LogOut,
 } from 'lucide-react'
+import { useAtom } from 'jotai'
+import { useRouter } from 'next/navigation'
+
 
 import { Button } from '@/components/ui/button'
 
@@ -21,17 +28,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { TablaProductos } from '@/components/productos/tabla-productos'
-import { productos as productosIniciales } from '@/lib/data'
+import { productosAtom, empleadoActivoAtom } from '@/lib/state'
 import { Badge } from '@/components/ui/badge'
 
 export default function Dashboard() {
-  const stockBajoCount = productosIniciales.filter(p => {
+  const [productos] = useAtom(productosAtom)
+  const [empleadoActivo, setEmpleadoActivo] = useAtom(empleadoActivoAtom)
+  const router = useRouter()
+
+  const stockBajoCount = productos.filter(p => {
     const stockTotal = p.variantes.reduce((sum, v) => sum + v.cantidad, 0);
     return stockTotal > 0 && stockTotal <= p.stockMinimo;
   }).length;
+
+  const handleLogout = () => {
+    setEmpleadoActivo(null);
+    router.push('/login');
+  }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -165,12 +180,12 @@ export default function Dashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+              <DropdownMenuLabel>{empleadoActivo?.nombre}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Ajustes</DropdownMenuItem>
-              <DropdownMenuItem>Soporte</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Cerrar Sesión</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
@@ -184,3 +199,5 @@ export default function Dashboard() {
     </div>
   )
 }
+
+    

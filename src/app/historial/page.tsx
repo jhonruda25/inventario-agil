@@ -13,8 +13,10 @@ import {
   Undo2,
   Users,
   UserCog,
+  LogOut,
 } from 'lucide-react'
 import { useAtom } from 'jotai'
+import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -44,7 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { ventasAtom, productosAtom, clientesAtom, empleadosAtom } from "@/lib/state"
+import { ventasAtom, productosAtom, clientesAtom, empleadosAtom, empleadoActivoAtom } from "@/lib/state"
 import type { Producto, Venta, Variante } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 
@@ -60,7 +62,9 @@ export default function HistorialPage() {
   const [ventas, setVentas] = useAtom(ventasAtom)
   const [clientes] = useAtom(clientesAtom)
   const [empleados] = useAtom(empleadosAtom)
+  const [empleadoActivo, setEmpleadoActivo] = useAtom(empleadoActivoAtom)
   const [, setProductos] = useAtom(productosAtom)
+  const router = useRouter()
   const { toast } = useToast()
 
   const handleDevolucion = (ventaId: string) => {
@@ -100,6 +104,11 @@ export default function HistorialPage() {
       title: "Devolución Exitosa",
       description: `La venta ${ventaId} ha sido procesada y el stock ha sido restaurado.`,
     });
+  }
+
+  const handleLogout = () => {
+    setEmpleadoActivo(null);
+    router.push('/login');
   }
 
   return (
@@ -222,12 +231,12 @@ export default function HistorialPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+              <DropdownMenuLabel>{empleadoActivo?.nombre}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Ajustes</DropdownMenuItem>
-              <DropdownMenuItem>Soporte</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Cerrar Sesión</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
@@ -325,3 +334,5 @@ export default function HistorialPage() {
     </div>
   )
 }
+
+    
