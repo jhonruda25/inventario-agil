@@ -2,8 +2,9 @@ import Link from 'next/link'
 import {
   CircleUser,
   Menu,
+  Package,
   Package2,
-  Search,
+  ShoppingCart,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -32,16 +33,23 @@ export default function Dashboard() {
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold text-primary">
               <Package2 className="h-6 w-6" />
-              <span className="">Inventario Ágil</span>
+              <span className="">Tienda Ágil</span>
             </Link>
           </div>
           <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               <Link
-                href="#"
+                href="/vender"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Punto de Venta
+              </Link>
+              <Link
+                href="/"
                 className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
               >
-                <Package2 className="h-4 w-4" />
+                <Package className="h-4 w-4" />
                 Productos{' '}
                 {stockBajoCount > 0 && (
                   <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
@@ -73,13 +81,20 @@ export default function Dashboard() {
                   className="flex items-center gap-2 text-lg font-semibold text-primary"
                 >
                   <Package2 className="h-6 w-6" />
-                  <span className="sr-only">Inventario Ágil</span>
+                  <span className="sr-only">Tienda Ágil</span>
                 </Link>
                 <Link
-                  href="#"
+                  href="/vender"
+                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  Punto de Venta
+                </Link>
+                <Link
+                  href="/"
                   className="mx-[-0.65rem] flex items-center gap-4 rounded-xl bg-muted px-3 py-2 text-foreground hover:text-foreground"
                 >
-                  <Package2 className="h-5 w-5" />
+                  <Package className="h-5 w-5" />
                   Productos
                   {stockBajoCount > 0 && (
                   <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground">

@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Inventario Ágil',
-  description: 'Sistema de Inventario Inteligente',
+  title: 'Tienda Ágil',
+  description: 'Sistema de Punto de Venta e Inventario Inteligente',
 };
 
 export default function RootLayout({
