@@ -45,6 +45,115 @@ type TablaProductosProps = {
   productosIniciales: Producto[]
 }
 
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
+}
+
+function FilaProducto({ 
+  producto, 
+  onAbrirDialogoEditar, 
+  onAbrirDialogoIA, 
+  onEliminarProducto 
+}: { 
+  producto: Producto,
+  onAbrirDialogoEditar: (producto: Producto) => void,
+  onAbrirDialogoIA: (producto: Producto) => void,
+  onEliminarProducto: (id: string) => void,
+}) {
+  const stockTotal = producto.variantes.reduce((sum, v) => sum + v.cantidad, 0);
+  const precioPromedio = producto.variantes.length > 0
+    ? producto.variantes.reduce((sum, v) => sum + v.precio, 0) / producto.variantes.length
+    : 0;
+
+  return (
+    <Collapsible asChild key={producto.id} tagName="tbody" className="border-b">
+        <>
+          <TableRow>
+            <TableCell>
+              {producto.variantes.length > 1 && (
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
+                  </Button>
+                </CollapsibleTrigger>
+              )}
+            </TableCell>
+            <TableCell className="font-medium">{producto.nombre}</TableCell>
+            <TableCell>
+              <div className="flex flex-col gap-1">
+                {producto.variantes.slice(0, 2).map(v => 
+                  <Badge variant="outline" key={v.id}>{v.sku}</Badge>
+                )}
+                {producto.variantes.length > 2 && <Badge variant="secondary">...y {producto.variantes.length - 2} más</Badge>}
+              </div>
+            </TableCell>
+              <TableCell className="text-right">
+              <div className="flex items-center justify-end gap-2">
+                  <span>{stockTotal}</span>
+                  {stockTotal === 0 ? (
+                      <Badge variant="destructive">Sin Stock</Badge>
+                  ) : stockTotal <= producto.stockMinimo ? (
+                      <Badge className="bg-yellow-400 text-yellow-900 hover:bg-yellow-400/80">Stock Bajo</Badge>
+                  ) : null}
+              </div>
+            </TableCell>
+            <TableCell className="hidden md:table-cell text-right">{formatCurrency(precioPromedio)}</TableCell>
+            <TableCell>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-haspopup="true"
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Alternar menú</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => onAbrirDialogoIA(producto)}>Sugerencia IA</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onAbrirDialogoEditar(producto)}>Editar</DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive" onClick={() => onEliminarProducto(producto.id)}>Eliminar</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+          <CollapsibleContent asChild>
+              <TableRow className="bg-muted/50">
+              <TableCell colSpan={6} className="p-0">
+                  <div className="p-4">
+                  <h4 className="font-semibold mb-2">Variantes</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Variante</TableHead>
+                        <TableHead>SKU</TableHead>
+                        <TableHead className="text-right">Cantidad</TableHead>
+                        <TableHead className="text-right">Precio</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {producto.variantes.map(v => (
+                        <TableRow key={v.id}>
+                          <TableCell>{v.nombre}</TableCell>
+                          <TableCell><Badge variant="outline">{v.sku}</Badge></TableCell>
+                          <TableCell className="text-right">{v.cantidad}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(v.precio)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  </div>
+              </TableCell>
+            </TableRow>
+          </CollapsibleContent>
+        </>
+    </Collapsible>
+  )
+}
+
+
 export function TablaProductos({ productosIniciales }: TablaProductosProps) {
   const [productos, setProductos] = React.useState<Producto[]>(productosIniciales)
   const [busqueda, setBusqueda] = React.useState("")
@@ -93,10 +202,6 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
     setProductos((prev) => prev.filter((p) => p.id !== id))
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
-  }
-
   return (
     <>
       <Card>
@@ -134,98 +239,17 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
                 </TableHead>
               </TableRow>
             </TableHeader>
-              {productosFiltrados.map((producto) => {
-                const stockTotal = producto.variantes.reduce((sum, v) => sum + v.cantidad, 0);
-                const precioPromedio = producto.variantes.length > 0
-                  ? producto.variantes.reduce((sum, v) => sum + v.precio, 0) / producto.variantes.length
-                  : 0;
-
-                return (
-                <Collapsible asChild key={producto.id} tagName="tbody" className="border-b">
-                    <>
-                      <TableRow>
-                        <TableCell>
-                          {producto.variantes.length > 1 && (
-                            <CollapsibleTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <ChevronDown className="h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-                              </Button>
-                            </CollapsibleTrigger>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">{producto.nombre}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            {producto.variantes.slice(0, 2).map(v => 
-                              <Badge variant="outline" key={v.id}>{v.sku}</Badge>
-                            )}
-                            {producto.variantes.length > 2 && <Badge variant="secondary">...y {producto.variantes.length - 2} más</Badge>}
-                          </div>
-                        </TableCell>
-                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                              <span>{stockTotal}</span>
-                              {stockTotal === 0 ? (
-                                  <Badge variant="destructive">Sin Stock</Badge>
-                              ) : stockTotal <= producto.stockMinimo ? (
-                                  <Badge className="bg-yellow-400 text-yellow-900 hover:bg-yellow-400/80">Stock Bajo</Badge>
-                              ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-right">{formatCurrency(precioPromedio)}</TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                aria-haspopup="true"
-                                size="icon"
-                                variant="ghost"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Alternar menú</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleAbrirDialogoIA(producto)}>Sugerencia IA</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAbrirDialogoEditar(producto)}>Editar</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleEliminarProducto(producto.id)}>Eliminar</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                      <CollapsibleContent asChild>
-                         <TableRow className="bg-muted/50">
-                          <TableCell colSpan={6} className="p-0">
-                             <div className="p-4">
-                              <h4 className="font-semibold mb-2">Variantes</h4>
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Variante</TableHead>
-                                    <TableHead>SKU</TableHead>
-                                    <TableHead className="text-right">Cantidad</TableHead>
-                                    <TableHead className="text-right">Precio</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {producto.variantes.map(v => (
-                                    <TableRow key={v.id}>
-                                      <TableCell>{v.nombre}</TableCell>
-                                      <TableCell><Badge variant="outline">{v.sku}</Badge></TableCell>
-                                      <TableCell className="text-right">{v.cantidad}</TableCell>
-                                      <TableCell className="text-right">{formatCurrency(v.precio)}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                             </div>
-                          </TableCell>
-                        </TableRow>
-                      </CollapsibleContent>
-                    </>
-                </Collapsible>
-              )})}
+            
+            {productosFiltrados.map((producto) => (
+              <FilaProducto 
+                key={producto.id}
+                producto={producto}
+                onAbrirDialogoEditar={handleAbrirDialogoEditar}
+                onAbrirDialogoIA={handleAbrirDialogoIA}
+                onEliminarProducto={handleEliminarProducto}
+              />
+            ))}
+              
           </Table>
         </CardContent>
         <CardFooter>
