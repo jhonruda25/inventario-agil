@@ -1,4 +1,5 @@
-import type { Producto } from './types';
+
+import type { Producto, Cliente } from './types';
 
 export const productos: Producto[] = [
   {
@@ -71,4 +72,22 @@ export const productos: Producto[] = [
   },
 ];
 
-    
+
+export const clientes: Cliente[] = [
+    {
+        id: 'cli-001',
+        nombre: 'Carlos Ramírez',
+        email: 'carlos.r@email.com',
+        telefono: '3101234567',
+        historialVentasIds: [],
+        puntos: 150
+    },
+    {
+        id: 'cli-002',
+        nombre: 'Luisa Fernanda',
+        email: 'luisa.f@email.com',
+        telefono: '3209876543',
+        historialVentasIds: [],
+        puntos: 45
+    }
+]

@@ -1,6 +1,7 @@
+
 import { atom } from 'jotai';
-import type { Venta, Producto } from './types';
-import { productos as productosIniciales } from './data';
+import type { Venta, Producto, Cliente } from './types';
+import { productos as productosIniciales, clientes as clientesIniciales } from './data';
 
 /**
  * Jotai atoms are used for global state management.
@@ -17,4 +18,6 @@ export const ventasAtom = atom<Venta[]>([]);
 // This allows product data to be modified globally (e.g., updating stock after a sale).
 export const productosAtom = atom<Producto[]>(productosIniciales);
 
-    
+
+// Atom to store the list of clients.
+export const clientesAtom = atom<Cliente[]>(clientesIniciales);

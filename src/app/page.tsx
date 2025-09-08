@@ -1,3 +1,4 @@
+
 import Link from 'next/link'
 import {
   CircleUser,
@@ -5,7 +6,8 @@ import {
   Package,
   Package2,
   ShoppingCart,
-  LineChart
+  LineChart,
+  Users
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -68,6 +70,13 @@ export default function Dashboard() {
                   </Badge>
                 )}
               </Link>
+               <Link
+                href="/clientes"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Users className="h-4 w-4" />
+                Clientes
+              </Link>
             </nav>
           </div>
         </div>
@@ -119,6 +128,13 @@ export default function Dashboard() {
                     {stockBajoCount}
                   </Badge>
                 )}
+                </Link>
+                 <Link
+                    href="/clientes"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                    <Users className="h-5 w-5" />
+                    Clientes
                 </Link>
               </nav>
             </SheetContent>

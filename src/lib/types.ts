@@ -1,4 +1,5 @@
 
+
 export type Variante = {
   id: string;
   nombre: string; // E.g., "Rojo", "Talla M"
@@ -26,8 +27,18 @@ export type CarritoItem = {
   cantidadEnCarrito: number;
 };
 
+export type Cliente = {
+    id: string;
+    nombre: string;
+    email: string;
+    telefono: string;
+    historialVentasIds: string[];
+    puntos: number;
+}
+
 export type Venta = {
   id: string;
+  clienteId: string | null;
   items: CarritoItem[];
   subtotal: number;
   total: number;
@@ -41,5 +52,3 @@ export type Venta = {
   fecha: Date;
   estado: 'completada' | 'devuelta';
 }
-
-    

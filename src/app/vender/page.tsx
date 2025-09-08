@@ -16,6 +16,9 @@ import {
   Printer,
   LineChart,
   Percent,
+  Users,
+  UserPlus,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,14 +66,25 @@ import { Badge } from "@/components/ui/badge";
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
-import type { Producto, Variante, Venta, CarritoItem } from "@/lib/types";
+
+import type { Producto, Variante, Venta, CarritoItem, Cliente } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAtom } from 'jotai'
-import { ventasAtom, productosAtom } from "@/lib/state";
+import { ventasAtom, productosAtom, clientesAtom } from "@/lib/state";
 
 export default function VenderPage() {
   const [productos, setProductos] = useAtom(productosAtom);
+  const [clientes, setClientes] = useAtom(clientesAtom);
   const [carrito, setCarrito] = React.useState<CarritoItem[]>([]);
   const [busqueda, setBusqueda] = React.useState("");
   const [montoPagado, setMontoPagado] = React.useState<string>("");
@@ -86,6 +100,7 @@ export default function VenderPage() {
   const [, setVentas] = useAtom(ventasAtom);
 
   const [descuentoPorcentaje, setDescuentoPorcentaje] = React.useState<number>(0);
+  const [clienteSeleccionadoId, setClienteSeleccionadoId] = React.useState<string | null>(null)
 
 
   // --- Estados para el escáner ---
@@ -181,6 +196,7 @@ export default function VenderPage() {
     // 1. Crear el objeto de la nueva venta
     const nuevaVenta: Venta = {
         id: `venta-${Date.now()}`,
+        clienteId: clienteSeleccionadoId,
         items: carrito,
         subtotal: subtotalCarrito,
         total: totalCarrito,
@@ -220,6 +236,7 @@ export default function VenderPage() {
     setCambio(null);
     setMetodoPago("efectivo");
     setDescuentoPorcentaje(0);
+    setClienteSeleccionadoId(null);
   }
 
   const formatCurrency = (amount: number) => {
@@ -310,6 +327,11 @@ export default function VenderPage() {
     window.print();
  };
 
+ const [open, setOpen] = React.useState(false)
+
+ const clienteActual = clientes.find(c => c.id === clienteSeleccionadoId);
+
+
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr] print:block">
        <div className="hidden border-r bg-muted/40 md:block print:hidden">
@@ -347,6 +369,13 @@ export default function VenderPage() {
                     {stockBajoCount}
                   </Badge>
                 )}
+              </Link>
+              <Link
+                href="/clientes"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Users className="h-4 w-4" />
+                Clientes
               </Link>
             </nav>
           </div>
@@ -399,6 +428,13 @@ export default function VenderPage() {
                     {stockBajoCount}
                   </Badge>
                 )}
+                </Link>
+                 <Link
+                    href="/clientes"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                    <Users className="h-5 w-5" />
+                    Clientes
                 </Link>
               </nav>
             </SheetContent>
@@ -572,6 +608,52 @@ export default function VenderPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex-col items-stretch gap-4">
+                    <div className="grid gap-2">
+                        <Label>Cliente</Label>
+                        {clienteActual ? (
+                             <div className="flex items-center justify-between rounded-lg border bg-background p-2">
+                                <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-muted-foreground" />
+                                    <span>{clienteActual.nombre}</span>
+                                </div>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setClienteSeleccionadoId(null)}>
+                                    <UserX className="h-4 w-4 text-destructive" />
+                                </Button>
+                             </div>
+                        ) : (
+                             <Popover open={open} onOpenChange={setOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start font-normal">
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Asignar cliente
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[300px] p-0" align="start">
+                                     <Command>
+                                        <CommandInput placeholder="Buscar cliente por nombre..." />
+                                        <CommandList>
+                                            <CommandEmpty>No se encontraron clientes.</CommandEmpty>
+                                            <CommandGroup>
+                                            {clientes.map((cliente) => (
+                                                <CommandItem
+                                                key={cliente.id}
+                                                value={cliente.nombre}
+                                                onSelect={() => {
+                                                    setClienteSeleccionadoId(cliente.id)
+                                                    setOpen(false)
+                                                }}
+                                                >
+                                                {cliente.nombre}
+                                                </CommandItem>
+                                            ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+                       
+                    </div>
                     <div className="flex items-end gap-2">
                         <div className="grid flex-grow gap-2">
                             <Label htmlFor="descuento">Descuento (%)</Label>
@@ -669,6 +751,7 @@ export default function VenderPage() {
                     <p>No. Venta: {ventaFinalizada?.id}</p>
                     <p>Fecha: {ventaFinalizada?.fecha.toLocaleString('es-CO')}</p>
                     <p>Cajero: Administrador</p>
+                    <p>Cliente: {clientes.find(c => c.id === ventaFinalizada?.clienteId)?.nombre || 'Cliente General'}</p>
                 </div>
                 <Table>
                     <TableHeader>
@@ -730,5 +813,3 @@ export default function VenderPage() {
     </div>
   );
 }
-
-    
