@@ -48,6 +48,10 @@ export default function Dashboard() {
     router.push('/login');
   }
 
+  const esAdmin = empleadoActivo?.rol === 'administrador';
+  const esCajero = empleadoActivo?.rol === 'cajero';
+  const esInventario = empleadoActivo?.rol === 'inventario';
+
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
@@ -60,46 +64,56 @@ export default function Dashboard() {
           </div>
           <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              <Link
-                href="/vender"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                Punto de Venta
-              </Link>
-               <Link
-                href="/historial"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <LineChart className="h-4 w-4" />
-                Historial de Ventas
-              </Link>
-              <Link
-                href="/"
-                className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
-              >
-                <Package className="h-4 w-4" />
-                Productos{' '}
-                {stockBajoCount > 0 && (
-                  <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
-                    {stockBajoCount}
-                  </Badge>
-                )}
-              </Link>
-               <Link
-                href="/clientes"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Users className="h-4 w-4" />
-                Clientes
-              </Link>
-              <Link
-                href="/empleados"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <UserCog className="h-4 w-4" />
-                Empleados
-              </Link>
+              {(esAdmin || esCajero) && (
+                <Link
+                  href="/vender"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  Punto de Venta
+                </Link>
+              )}
+               {(esAdmin || esCajero) && (
+                <Link
+                  href="/historial"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <LineChart className="h-4 w-4" />
+                  Historial de Ventas
+                </Link>
+              )}
+              {(esAdmin || esInventario) && (
+                <Link
+                  href="/"
+                  className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
+                >
+                  <Package className="h-4 w-4" />
+                  Productos{' '}
+                  {stockBajoCount > 0 && (
+                    <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
+                      {stockBajoCount}
+                    </Badge>
+                  )}
+                </Link>
+              )}
+               {(esAdmin || esCajero) && (
+                <Link
+                  href="/clientes"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <Users className="h-4 w-4" />
+                  Clientes
+                </Link>
+              )}
+              {esAdmin && (
+                <Link
+                  href="/empleados"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                >
+                  <UserCog className="h-4 w-4" />
+                  Empleados
+                </Link>
+              )}
             </nav>
           </div>
         </div>
@@ -126,46 +140,56 @@ export default function Dashboard() {
                   <Package2 className="h-6 w-6" />
                   <span className="sr-only">Tienda Ágil</span>
                 </Link>
-                <Link
-                  href="/vender"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  Punto de Venta
-                </Link>
-                 <Link
-                  href="/historial"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                  <LineChart className="h-5 w-5" />
-                  Historial de Ventas
-                </Link>
-                <Link
-                  href="/"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl bg-muted px-3 py-2 text-foreground hover:text-foreground"
-                >
-                  <Package className="h-5 w-5" />
-                  Productos
-                  {stockBajoCount > 0 && (
-                  <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
-                    {stockBajoCount}
-                  </Badge>
+                {(esAdmin || esCajero) && (
+                  <Link
+                    href="/vender"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    Punto de Venta
+                  </Link>
                 )}
-                </Link>
-                 <Link
-                    href="/clientes"
+                 {(esAdmin || esCajero) && (
+                  <Link
+                    href="/historial"
                     className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                    <Users className="h-5 w-5" />
-                    Clientes
-                </Link>
-                 <Link
-                    href="/empleados"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
-                >
-                    <UserCog className="h-5 w-5" />
-                    Empleados
-                </Link>
+                  >
+                    <LineChart className="h-5 w-5" />
+                    Historial de Ventas
+                  </Link>
+                )}
+                {(esAdmin || esInventario) && (
+                  <Link
+                    href="/"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl bg-muted px-3 py-2 text-foreground hover:text-foreground"
+                  >
+                    <Package className="h-5 w-5" />
+                    Productos
+                    {stockBajoCount > 0 && (
+                    <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
+                      {stockBajoCount}
+                    </Badge>
+                  )}
+                  </Link>
+                )}
+                 {(esAdmin || esCajero) && (
+                    <Link
+                        href="/clientes"
+                        className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                        <Users className="h-5 w-5" />
+                        Clientes
+                    </Link>
+                 )}
+                 {esAdmin && (
+                    <Link
+                        href="/empleados"
+                        className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    >
+                        <UserCog className="h-5 w-5" />
+                        Empleados
+                    </Link>
+                 )}
               </nav>
             </SheetContent>
           </Sheet>
@@ -199,5 +223,3 @@ export default function Dashboard() {
     </div>
   )
 }
-
-    

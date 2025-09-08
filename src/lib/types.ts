@@ -1,6 +1,5 @@
 
 
-
 export type Variante = {
   id: string;
   nombre: string; // E.g., "Rojo", "Talla M"
@@ -37,10 +36,12 @@ export type Cliente = {
     puntos: number;
 }
 
+export type RolEmpleado = 'administrador' | 'cajero' | 'inventario';
+
 export type Empleado = {
     id: string;
     nombre: string;
-    rol: 'administrador' | 'cajero';
+    rol: RolEmpleado;
     pin: string; // Para un futuro login/acceso rápido
 }
 

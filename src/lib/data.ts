@@ -105,5 +105,11 @@ export const empleados: Empleado[] = [
         nombre: 'Juan Pérez (Cajero)',
         rol: 'cajero',
         pin: '5678'
+    },
+    {
+        id: 'emp-003',
+        nombre: 'Marta Rivas (Inventario)',
+        rol: 'inventario',
+        pin: '1122'
     }
 ];

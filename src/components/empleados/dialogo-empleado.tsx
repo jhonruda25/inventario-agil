@@ -28,7 +28,7 @@ import type { Empleado } from "@/lib/types"
 
 const empleadoSchema = z.object({
   nombre: z.string().min(3, { message: "El nombre debe tener al menos 3 caracteres." }),
-  rol: z.enum(['administrador', 'cajero'], { required_error: "Debes seleccionar un rol." }),
+  rol: z.enum(['administrador', 'cajero', 'inventario'], { required_error: "Debes seleccionar un rol." }),
   pin: z.string().length(4, { message: "El PIN debe tener exactamente 4 dígitos." }).regex(/^\d+$/, { message: "El PIN solo puede contener números." }),
 })
 
@@ -112,6 +112,7 @@ export function DialogoEmpleado({ open, onOpenChange, onSave, empleado }: Dialog
                     <SelectContent>
                       <SelectItem value="administrador">Administrador</SelectItem>
                       <SelectItem value="cajero">Cajero</SelectItem>
+                      <SelectItem value="inventario">Encargado de Inventario</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
