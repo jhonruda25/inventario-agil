@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -41,8 +42,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { ventasAtom } from "@/lib/state"
-import type { Venta } from "@/lib/types"
+import { ventasAtom, productosAtom } from "@/lib/state"
+import type { Producto, Venta, Variante } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("es-CO", {
@@ -53,12 +55,47 @@ const formatCurrency = (amount: number) => {
 }
 
 export default function HistorialPage() {
-  const [ventas] = useAtom(ventasAtom)
+  const [ventas, setVentas] = useAtom(ventasAtom)
+  const [, setProductos] = useAtom(productosAtom)
+  const { toast } = useToast()
 
   const handleDevolucion = (ventaId: string) => {
-    // Aquí iría la lógica para procesar la devolución.
-    // Por ahora, solo mostraremos una alerta.
-    alert(`Iniciar proceso de devolución para la venta ${ventaId}. (Funcionalidad en desarrollo)`)
+    const ventaADevolver = ventas.find(v => v.id === ventaId);
+    if (!ventaADevolver || ventaADevolver.estado === 'devuelta') {
+      toast({
+        variant: "destructive",
+        title: "Error en la devolución",
+        description: "Esta venta ya ha sido devuelta o no se puede procesar.",
+      });
+      return;
+    }
+
+    // Actualizar el stock
+    setProductos(prevProductos => {
+      const productosActualizados = JSON.parse(JSON.stringify(prevProductos));
+      ventaADevolver.items.forEach(itemDevuelto => {
+        const productoIndex = productosActualizados.findIndex((p: Producto) => p.id === itemDevuelto.productoId);
+        if (productoIndex !== -1) {
+          const varianteIndex = productosActualizados[productoIndex].variantes.findIndex((v: Variante) => v.id === itemDevuelto.variante.id);
+          if (varianteIndex !== -1) {
+            productosActualizados[productoIndex].variantes[varianteIndex].cantidad += itemDevuelto.cantidadEnCarrito;
+          }
+        }
+      });
+      return productosActualizados;
+    });
+
+    // Actualizar el estado de la venta
+    setVentas(prevVentas => 
+      prevVentas.map(venta => 
+        venta.id === ventaId ? { ...venta, estado: 'devuelta' } : venta
+      )
+    );
+
+    toast({
+      title: "Devolución Exitosa",
+      description: `La venta ${ventaId} ha sido procesada y el stock ha sido restaurado.`,
+    });
   }
 
   return (
@@ -247,5 +284,3 @@ export default function HistorialPage() {
     </div>
   )
 }
-
-    
