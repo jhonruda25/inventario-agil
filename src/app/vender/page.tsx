@@ -63,15 +63,13 @@ import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 
-
-import { productos as productosIniciales } from "@/lib/data";
 import type { Producto, Variante, Venta, CarritoItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAtom } from 'jotai'
-import { ventasAtom } from "@/lib/state";
+import { ventasAtom, productosAtom } from "@/lib/state";
 
 export default function VenderPage() {
-  const [productos, setProductos] = React.useState<Producto[]>(productosIniciales);
+  const [productos, setProductos] = useAtom(productosAtom);
   const [carrito, setCarrito] = React.useState<CarritoItem[]>([]);
   const [busqueda, setBusqueda] = React.useState("");
   const [montoPagado, setMontoPagado] = React.useState<string>("");
@@ -117,8 +115,11 @@ export default function VenderPage() {
   const agregarAlCarrito = React.useCallback((producto: Producto, variante: Variante) => {
     setCarrito((prev) => {
       const itemExistente = prev.find((item) => item.variante.id === variante.id);
+      
+      const stockDisponible = productos.find(p => p.id === producto.id)?.variantes.find(v => v.id === variante.id)?.cantidad ?? 0;
+
       if (itemExistente) {
-        if (itemExistente.cantidadEnCarrito < variante.cantidad) {
+        if (itemExistente.cantidadEnCarrito < stockDisponible) {
           return prev.map((item) =>
             item.variante.id === variante.id
               ? { ...item, cantidadEnCarrito: item.cantidadEnCarrito + 1 }
@@ -133,7 +134,7 @@ export default function VenderPage() {
           return prev;
         }
       } else {
-        if (variante.cantidad > 0) {
+        if (stockDisponible > 0) {
           return [...prev, { productoId: producto.id, nombreProducto: producto.nombre, variante, cantidadEnCarrito: 1 }];
         } else {
           toast({
@@ -148,7 +149,7 @@ export default function VenderPage() {
     setBusqueda("");
     setDialogoVariantesAbierto(false);
     setProductoSeleccionado(null);
-  }, [toast]);
+  }, [productos, toast]);
   
   const eliminarDelCarrito = (varianteId: string) => {
     setCarrito(prev => prev.filter(item => item.variante.id !== varianteId));
@@ -169,7 +170,7 @@ export default function VenderPage() {
   };
   
   const finalizarVenta = () => {
-    // Aquí actualizamos el estado global de ventas
+    // 1. Crear el objeto de la nueva venta
     const nuevaVenta: Venta = {
         id: `venta-${Date.now()}`,
         items: carrito,
@@ -178,16 +179,32 @@ export default function VenderPage() {
         montoPagado: montoPagado ? parseFloat(montoPagado) : totalCarrito,
         cambio: cambio,
         fecha: new Date(),
+        estado: 'completada',
     };
     
+    // 2. Actualizar el stock de los productos
+    setProductos(prevProductos => {
+        const productosActualizados = JSON.parse(JSON.stringify(prevProductos));
+        
+        carrito.forEach(itemCarrito => {
+            const productoIndex = productosActualizados.findIndex((p: Producto) => p.id === itemCarrito.productoId);
+            if (productoIndex !== -1) {
+                const varianteIndex = productosActualizados[productoIndex].variantes.findIndex((v: Variante) => v.id === itemCarrito.variante.id);
+                if (varianteIndex !== -1) {
+                    productosActualizados[productoIndex].variantes[varianteIndex].cantidad -= itemCarrito.cantidadEnCarrito;
+                }
+            }
+        });
+        
+        return productosActualizados;
+    });
+
+    // 3. Añadir la venta al historial global
     setVentas(prevVentas => [...prevVentas, nuevaVenta]);
+    
+    // 4. Mostrar el ticket y resetear el estado local
     setVentaFinalizada(nuevaVenta);
     setDialogoTicketAbierto(true);
-
-    // TODO: Actualizar el stock de los productos
-    // Esta parte es importante para un sistema real.
-
-    // Resetear estado para la siguiente venta
     setCarrito([]);
     setMontoPagado("");
     setCambio(null);
@@ -202,7 +219,7 @@ export default function VenderPage() {
     }).format(amount);
   };
   
-  const stockBajoCount = productosIniciales.filter(p => {
+   const stockBajoCount = productos.filter(p => {
     const stockTotal = p.variantes.reduce((sum, v) => sum + v.cantidad, 0);
     return stockTotal > 0 && stockTotal <= p.stockMinimo;
   }).length;
@@ -340,7 +357,7 @@ export default function VenderPage() {
             <SheetContent side="left" className="flex flex-col">
               <nav className="grid gap-2 text-lg font-medium">
                 <Link
-                  href="#"
+                  href="/"
                   className="flex items-center gap-2 text-lg font-semibold text-primary"
                 >
                   <Package2 className="h-6 w-6" />
@@ -682,3 +699,5 @@ export default function VenderPage() {
     </div>
   );
 }
+
+    

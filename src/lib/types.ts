@@ -33,4 +33,7 @@ export type Venta = {
   montoPagado: number | null;
   cambio: number | null;
   fecha: Date;
+  estado: 'completada' | 'devuelta';
 }
+
+    

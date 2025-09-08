@@ -170,7 +170,7 @@ export default function HistorialPage() {
             <CardHeader>
               <CardTitle>Transacciones Recientes</CardTitle>
               <CardDescription>
-                Aquí puedes ver todas las ventas realizadas.
+                Aquí puedes ver todas las ventas realizadas y gestionar devoluciones.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -181,6 +181,7 @@ export default function HistorialPage() {
                     <TableHead>Fecha</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead>Método Pago</TableHead>
+                    <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead>
                       <span className="sr-only">Acciones</span>
@@ -205,9 +206,17 @@ export default function HistorialPage() {
                          <TableCell>
                             <Badge variant="outline" className="capitalize">{venta.metodoPago}</Badge>
                         </TableCell>
+                        <TableCell>
+                          <Badge variant={venta.estado === 'devuelta' ? 'destructive' : 'secondary'} className="capitalize">{venta.estado}</Badge>
+                        </TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(venta.total)}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm" onClick={() => handleDevolucion(venta.id)}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDevolucion(venta.id)}
+                            disabled={venta.estado === 'devuelta'}
+                          >
                             <Undo2 className="mr-2 h-3 w-3" />
                             Devolución
                           </Button>
@@ -217,7 +226,7 @@ export default function HistorialPage() {
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="h-24 text-center"
                       >
                         No hay ventas registradas aún.
@@ -238,3 +247,5 @@ export default function HistorialPage() {
     </div>
   )
 }
+
+    

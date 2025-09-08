@@ -16,3 +16,5 @@ export const ventasAtom = atom<Venta[]>([]);
 // Atom to store the list of products.
 // This allows product data to be modified globally (e.g., updating stock after a sale).
 export const productosAtom = atom<Producto[]>(productosIniciales);
+
+    
