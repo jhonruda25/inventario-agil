@@ -10,10 +10,10 @@ import {
   Search,
   ShoppingCart,
   Package,
-  Video,
   VideoOff,
   X,
-  ChevronDown
+  ChevronDown,
+  Printer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,9 +47,16 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge";
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -67,6 +74,15 @@ type CarritoItem = {
   cantidadEnCarrito: number;
 };
 
+type Venta = {
+  items: CarritoItem[];
+  total: number;
+  metodoPago: string;
+  montoPagado: number | null;
+  cambio: number | null;
+  fecha: Date;
+}
+
 
 export default function VenderPage() {
   const [productos] = React.useState<Producto[]>(productosIniciales);
@@ -74,9 +90,13 @@ export default function VenderPage() {
   const [busqueda, setBusqueda] = React.useState("");
   const [montoPagado, setMontoPagado] = React.useState<string>("");
   const [cambio, setCambio] = React.useState<number | null>(null);
+  const [metodoPago, setMetodoPago] = React.useState("efectivo");
   const { toast } = useToast();
+  
   const [dialogoVariantesAbierto, setDialogoVariantesAbierto] = React.useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<Producto | null>(null);
+  const [ventaFinalizada, setVentaFinalizada] = React.useState<Venta | null>(null);
+  const [dialogoTicketAbierto, setDialogoTicketAbierto] = React.useState(false);
 
 
   // --- Estados para el escáner ---
@@ -161,20 +181,31 @@ export default function VenderPage() {
   };
   
   const finalizarVenta = () => {
-    // Aquí iría la lógica para actualizar el inventario, guardar la venta, etc.
-    toast({
-      title: "Venta Finalizada",
-      description: "La venta se ha registrado correctamente.",
-    });
+    // En un caso real, aquí se actualizaría el inventario, se guardaría la venta en la BD, etc.
+    const venta: Venta = {
+        items: carrito,
+        total: totalCarrito,
+        metodoPago: metodoPago,
+        montoPagado: montoPagado ? parseFloat(montoPagado) : null,
+        cambio: cambio,
+        fecha: new Date(),
+    };
+    
+    setVentaFinalizada(venta);
+    setDialogoTicketAbierto(true);
+
+    // Resetear estado para la siguiente venta
     setCarrito([]);
     setMontoPagado("");
     setCambio(null);
+    setMetodoPago("efectivo");
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
+    return new Intl.NumberFormat("es-CO", {
       style: "currency",
-      currency: "EUR",
+      currency: "COP",
+      maximumFractionDigits: 0,
     }).format(amount);
   };
   
@@ -252,10 +283,15 @@ export default function VenderPage() {
     }
   }, [isScanning, hasCameraPermission, productos, agregarAlCarrito, toast]);
 
+ const handleImprimirTicket = () => {
+    // Lógica para imprimir el contenido del ticket
+    // Esto abrirá el diálogo de impresión del navegador
+    window.print();
+ };
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-       <div className="hidden border-r bg-muted/40 md:block">
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr] print:block">
+       <div className="hidden border-r bg-muted/40 md:block print:hidden">
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold text-primary">
@@ -288,8 +324,8 @@ export default function VenderPage() {
           </div>
         </div>
       </div>
-      <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+      <div className="flex flex-col print:p-0">
+        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6 print:hidden">
            <Sheet>
             <SheetTrigger asChild>
               <Button
@@ -353,7 +389,7 @@ export default function VenderPage() {
           </DropdownMenu>
         </header>
 
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 print:p-0">
           <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
             <div className="relative lg:col-span-2">
               <Card>
@@ -496,17 +532,35 @@ export default function VenderPage() {
                 </CardContent>
                 <CardFooter className="flex-col items-stretch gap-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="monto-pagado">Monto Pagado</Label>
-                        <Input id="monto-pagado" type="number" placeholder="0.00" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)}/>
+                        <Label>Método de Pago</Label>
+                         <Select value={metodoPago} onValueChange={setMetodoPago}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un método de pago" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="efectivo">Efectivo</SelectItem>
+                                <SelectItem value="tarjeta">Tarjeta de Crédito/Débito</SelectItem>
+                                <SelectItem value="transferencia">Transferencia</SelectItem>
+                                <SelectItem value="qr">Pago con QR</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <Button onClick={calcularCambio} disabled={!montoPagado || totalCarrito === 0}>Calcular Cambio</Button>
-                    {cambio !== null && (
+
+                    {metodoPago === 'efectivo' && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="monto-pagado">Monto Pagado</Label>
+                            <Input id="monto-pagado" type="number" placeholder="0.00" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)}/>
+                             <Button onClick={calcularCambio} disabled={!montoPagado || totalCarrito === 0}>Calcular Cambio</Button>
+                        </div>
+                    )}
+                   
+                    {cambio !== null && metodoPago === 'efectivo' && (
                         <div className="text-center p-4 bg-muted rounded-lg">
                             <p className="text-muted-foreground">Cambio a devolver:</p>
                             <p className="text-3xl font-bold text-primary">{formatCurrency(cambio)}</p>
                         </div>
                     )}
-                    <Button size="lg" className="w-full mt-4" style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'}} onClick={finalizarVenta} disabled={carrito.length === 0 || cambio === null}>
+                    <Button size="lg" className="w-full mt-4" style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'}} onClick={finalizarVenta} disabled={carrito.length === 0 || (metodoPago === 'efectivo' && cambio === null)}>
                         Finalizar Venta
                     </Button>
                 </CardFooter>
@@ -551,6 +605,75 @@ export default function VenderPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+    <Dialog open={dialogoTicketAbierto} onOpenChange={setDialogoTicketAbierto}>
+      <DialogContent className="sm:max-w-md print:shadow-none print:border-none">
+        <div id="ticket">
+            <DialogHeader>
+                <DialogTitle className="text-center">¡Venta Exitosa!</DialogTitle>
+                <DialogDescription className="text-center">
+                    Resumen de la Transacción
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div className="text-center text-sm text-muted-foreground">
+                    <p>Tienda Ágil S.A.S.</p>
+                    <p>NIT: 900.123.456-7</p>
+                    <p>Calle Falsa 123, Bogotá</p>
+                    <p>{ventaFinalizada?.fecha.toLocaleString('es-CO')}</p>
+                </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Producto</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {ventaFinalizada?.items.map(item => (
+                            <TableRow key={item.variante.id}>
+                                <TableCell>
+                                    {item.cantidadEnCarrito} x {item.nombreProducto} ({item.variante.nombre})
+                                </TableCell>
+                                <TableCell className="text-right">{formatCurrency(item.cantidadEnCarrito * item.variante.precio)}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+                <div className="space-y-1">
+                    <div className="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(ventaFinalizada?.total ?? 0)}</span>
+                    </div>
+                     <div className="flex justify-between font-bold text-lg">
+                        <span>TOTAL:</span>
+                        <span>{formatCurrency(ventaFinalizada?.total ?? 0)}</span>
+                    </div>
+                </div>
+                 <div className="text-center text-sm space-y-1 border-t pt-4 mt-4">
+                    <p>Pagado con: <span className="font-medium capitalize">{ventaFinalizada?.metodoPago}</span></p>
+                    {ventaFinalizada?.metodoPago === 'efectivo' && (
+                        <>
+                        <p>Monto Pagado: {formatCurrency(ventaFinalizada?.montoPagado ?? 0)}</p>
+                        <p>Cambio: {formatCurrency(ventaFinalizada?.cambio ?? 0)}</p>
+                        </>
+                    )}
+                    <p className="pt-4">¡Gracias por tu compra!</p>
+                </div>
+            </div>
+        </div>
+        <DialogFooter className="print:hidden">
+            <Button variant="outline" onClick={() => setDialogoTicketAbierto(false)}>Cerrar</Button>
+            <Button onClick={handleImprimirTicket}>
+                <Printer className="mr-2"/>
+                Imprimir Ticket
+            </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     </div>
   );
 }
+
+    

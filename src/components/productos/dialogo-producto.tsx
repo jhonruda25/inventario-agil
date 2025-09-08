@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -186,9 +187,9 @@ export function DialogoProducto({ open, onOpenChange, onSave, producto }: Dialog
                           name={`variantes.${index}.precio`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Precio (€)</FormLabel>
+                              <FormLabel>Precio (COP)</FormLabel>
                               <FormControl>
-                                <Input type="number" step="0.01" {...field} />
+                                <Input type="number" step="1" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -231,3 +232,5 @@ export function DialogoProducto({ open, onOpenChange, onSave, producto }: Dialog
     </Dialog>
   )
 }
+
+    

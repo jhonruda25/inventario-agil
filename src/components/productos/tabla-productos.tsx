@@ -2,17 +2,15 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Search } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Search, ChevronDown } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -33,7 +31,6 @@ import { Input } from "@/components/ui/input"
 import type { Producto } from "@/lib/types"
 import { DialogoProducto } from "./dialogo-producto"
 import { DialogoSugerenciaIA } from "./dialogo-sugerencia-ia"
-import { ChevronDown } from "lucide-react"
 
 
 type TablaProductosProps = {
@@ -41,7 +38,11 @@ type TablaProductosProps = {
 }
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
+  return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0,
+    }).format(amount);
 }
 
 function FilaProducto({ 
@@ -191,7 +192,9 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
   }
 
   const handleEliminarProducto = (id: string) => {
-    setProductos((prev) => prev.filter((p) => p.id !== id))
+    if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+        setProductos((prev) => prev.filter((p) => p.id !== id))
+    }
   }
 
   return (
@@ -268,3 +271,5 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
     </>
   )
 }
+
+    
