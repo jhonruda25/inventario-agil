@@ -12,13 +12,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   React.useEffect(() => {
+    // Si no hay empleado activo y no estamos en la página de login, redirigir a login.
     if (!empleadoActivo && pathname !== '/login') {
       router.push('/login')
     }
+    // Si hay un empleado activo y estamos en la página de login, redirigir al inicio.
+    if (empleadoActivo && pathname === '/login') {
+      router.push('/')
+    }
   }, [empleadoActivo, pathname, router])
 
+  // Mientras se redirige si no hay sesión, muestra un loader.
   if (!empleadoActivo && pathname !== '/login') {
-    // Puedes mostrar un loader aquí mientras redirige
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Redirigiendo al login...</p>
@@ -26,8 +31,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }
   
+  // Mientras se redirige si ya hay sesión, muestra un loader.
   if (empleadoActivo && pathname === '/login') {
-      router.push('/');
       return (
         <div className="flex h-screen items-center justify-center">
             <p>Ya has iniciado sesión. Redirigiendo...</p>
@@ -35,5 +40,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Si todo está en orden, muestra la página solicitada.
   return <>{children}</>
 }
