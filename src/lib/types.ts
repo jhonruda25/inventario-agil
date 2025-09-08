@@ -1,3 +1,4 @@
+
 export type Variante = {
   id: string;
   nombre: string; // E.g., "Rojo", "Talla M"
@@ -28,7 +29,12 @@ export type CarritoItem = {
 export type Venta = {
   id: string;
   items: CarritoItem[];
+  subtotal: number;
   total: number;
+  descuento?: {
+    tipo: 'porcentaje' | 'fijo';
+    valor: number;
+  };
   metodoPago: string;
   montoPagado: number | null;
   cambio: number | null;

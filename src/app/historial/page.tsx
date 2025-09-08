@@ -246,7 +246,12 @@ export default function HistorialPage() {
                         <TableCell>
                           <Badge variant={venta.estado === 'devuelta' ? 'destructive' : 'secondary'} className="capitalize">{venta.estado}</Badge>
                         </TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(venta.total)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {venta.descuento && (
+                              <div className="text-xs text-destructive line-through">{formatCurrency(venta.subtotal)}</div>
+                          )}
+                          {formatCurrency(venta.total)}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button 
                             variant="outline" 
@@ -284,3 +289,5 @@ export default function HistorialPage() {
     </div>
   )
 }
+
+    

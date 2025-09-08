@@ -14,7 +14,8 @@ import {
   X,
   ChevronDown,
   Printer,
-  LineChart
+  LineChart,
+  Percent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,15 +85,22 @@ export default function VenderPage() {
   
   const [, setVentas] = useAtom(ventasAtom);
 
+  const [descuentoPorcentaje, setDescuentoPorcentaje] = React.useState<number>(0);
+
 
   // --- Estados para el escáner ---
   const [isScanning, setIsScanning] = React.useState(false);
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
-  const totalCarrito = React.useMemo(() => {
+  const subtotalCarrito = React.useMemo(() => {
     return carrito.reduce((total, item) => total + item.variante.precio * item.cantidadEnCarrito, 0);
   }, [carrito]);
+  
+  const totalCarrito = React.useMemo(() => {
+    const totalDescuento = subtotalCarrito * (descuentoPorcentaje / 100);
+    return subtotalCarrito - totalDescuento;
+  }, [subtotalCarrito, descuentoPorcentaje]);
 
   const productosFiltrados = React.useMemo(() => {
     if (!busqueda) return [];
@@ -174,7 +182,9 @@ export default function VenderPage() {
     const nuevaVenta: Venta = {
         id: `venta-${Date.now()}`,
         items: carrito,
+        subtotal: subtotalCarrito,
         total: totalCarrito,
+        descuento: descuentoPorcentaje > 0 ? { tipo: 'porcentaje', valor: descuentoPorcentaje } : undefined,
         metodoPago: metodoPago,
         montoPagado: montoPagado ? parseFloat(montoPagado) : totalCarrito,
         cambio: cambio,
@@ -209,6 +219,7 @@ export default function VenderPage() {
     setMontoPagado("");
     setCambio(null);
     setMetodoPago("efectivo");
+    setDescuentoPorcentaje(0);
   }
 
   const formatCurrency = (amount: number) => {
@@ -547,14 +558,26 @@ export default function VenderPage() {
                 <CardContent className="grid gap-4">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(totalCarrito)}</span>
+                    <span>{formatCurrency(subtotalCarrito)}</span>
                   </div>
+                   {descuentoPorcentaje > 0 && (
+                    <div className="flex items-center justify-between text-destructive">
+                      <span className="text-muted-foreground">Descuento ({descuentoPorcentaje}%)</span>
+                      <span>- {formatCurrency(subtotalCarrito - totalCarrito)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between font-semibold text-2xl">
                     <span>Total</span>
                     <span>{formatCurrency(totalCarrito)}</span>
                   </div>
                 </CardContent>
                 <CardFooter className="flex-col items-stretch gap-4">
+                    <div className="flex items-end gap-2">
+                        <div className="grid flex-grow gap-2">
+                            <Label htmlFor="descuento">Descuento (%)</Label>
+                            <Input id="descuento" type="number" placeholder="0" value={descuentoPorcentaje || ''} onChange={(e) => setDescuentoPorcentaje(Math.max(0, Math.min(100, Number(e.target.value))))} />
+                        </div>
+                    </div>
                     <div className="grid gap-2">
                         <Label>Método de Pago</Label>
                          <Select value={metodoPago} onValueChange={setMetodoPago}>
@@ -573,7 +596,7 @@ export default function VenderPage() {
                     {metodoPago === 'efectivo' && (
                         <div className="grid gap-2">
                             <Label htmlFor="monto-pagado">Monto Pagado</Label>
-                            <Input id="monto-pagado" type="number" placeholder="0.00" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)}/>
+                            <Input id="monto-pagado" type="number" placeholder="0" value={montoPagado} onChange={(e) => setMontoPagado(e.target.value)}/>
                              <Button onClick={calcularCambio} disabled={!montoPagado || totalCarrito === 0}>Calcular Cambio</Button>
                         </div>
                     )}
@@ -669,8 +692,14 @@ export default function VenderPage() {
                 <div className="space-y-1 border-t pt-2 mt-2">
                     <div className="flex justify-between">
                         <span>Subtotal:</span>
-                        <span>{formatCurrency(ventaFinalizada?.total ?? 0)}</span>
+                        <span>{formatCurrency(ventaFinalizada?.subtotal ?? 0)}</span>
                     </div>
+                     {ventaFinalizada?.descuento && (
+                        <div className="flex justify-between text-destructive">
+                            <span>Descuento ({ventaFinalizada.descuento.valor}%):</span>
+                            <span>- {formatCurrency((ventaFinalizada.subtotal ?? 0) - (ventaFinalizada.total ?? 0))}</span>
+                        </div>
+                    )}
                      <div className="flex justify-between font-bold text-lg">
                         <span>TOTAL:</span>
                         <span>{formatCurrency(ventaFinalizada?.total ?? 0)}</span>
@@ -701,3 +730,5 @@ export default function VenderPage() {
     </div>
   );
 }
+
+    
