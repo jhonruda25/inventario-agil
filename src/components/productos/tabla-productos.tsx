@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Search, ChevronDown } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Search, ChevronDown, Upload } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,8 @@ import { Input } from "@/components/ui/input"
 import type { Producto } from "@/lib/types"
 import { DialogoProducto } from "./dialogo-producto"
 import { DialogoSugerenciaIA } from "./dialogo-sugerencia-ia"
+import { DialogoCargaMasiva } from "./dialogo-carga-masiva"
+import { useToast } from "@/hooks/use-toast"
 
 
 type TablaProductosProps = {
@@ -152,8 +154,10 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
   const [busqueda, setBusqueda] = React.useState("")
   const [dialogoAbierto, setDialogoAbierto] = React.useState(false)
   const [dialogoIAAbierto, setDialogoIAAbierto] = React.useState(false)
+  const [dialogoCargaAbierto, setDialogoCargaAbierto] = React.useState(false)
   const [productoSeleccionado, setProductoSeleccionado] =
     React.useState<Producto | null>(null)
+  const { toast } = useToast()
 
   const productosFiltrados = React.useMemo(() => {
     return productos.filter((p) =>
@@ -196,6 +200,15 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
         setProductos((prev) => prev.filter((p) => p.id !== id))
     }
   }
+  
+  const handleCargaMasiva = (nuevosProductos: Producto[]) => {
+    setProductos(prev => [...prev, ...nuevosProductos]);
+    setDialogoCargaAbierto(false);
+    toast({
+      title: "Carga Exitosa",
+      description: `Se han añadido ${nuevosProductos.length} productos nuevos.`
+    });
+  }
 
   return (
     <>
@@ -212,12 +225,20 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
                   onChange={(e) => setBusqueda(e.target.value)}
                 />
               </div>
-            <Button size="sm" className="gap-1" onClick={handleAbrirDialogoNuevo} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'}}>
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Añadir Producto
-              </span>
-            </Button>
+            <div className="flex gap-2">
+                 <Button size="sm" variant="outline" className="gap-1" onClick={() => setDialogoCargaAbierto(true)}>
+                    <Upload className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Carga Masiva
+                    </span>
+                 </Button>
+                <Button size="sm" className="gap-1" onClick={handleAbrirDialogoNuevo} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'}}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Añadir Producto
+                </span>
+                </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -268,8 +289,12 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
             producto={productoSeleccionado}
         />
       )}
+
+      <DialogoCargaMasiva
+        open={dialogoCargaAbierto}
+        onOpenChange={setDialogoCargaAbierto}
+        onCarga={handleCargaMasiva}
+      />
     </>
   )
 }
-
-    
