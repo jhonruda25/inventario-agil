@@ -9,7 +9,10 @@ import {
   ScanLine,
   Search,
   ShoppingCart,
-  Package
+  Package,
+  Video,
+  VideoOff,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +43,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+
 
 import { productos as productosIniciales } from "@/lib/data";
 import type { Producto } from "@/lib/types";
@@ -55,6 +61,11 @@ export default function VenderPage() {
   const [cambio, setCambio] = React.useState<number | null>(null);
   const { toast } = useToast();
 
+  // --- Estados para el escáner ---
+  const [isScanning, setIsScanning] = React.useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
   const totalCarrito = React.useMemo(() => {
     return carrito.reduce((total, item) => total + item.precio * item.cantidadEnCarrito, 0);
   }, [carrito]);
@@ -68,7 +79,7 @@ export default function VenderPage() {
     );
   }, [productos, busqueda]);
 
-  const agregarAlCarrito = (producto: Producto) => {
+  const agregarAlCarrito = React.useCallback((producto: Producto) => {
     setCarrito((prev) => {
       const itemExistente = prev.find((item) => item.id === producto.id);
       if (itemExistente) {
@@ -100,7 +111,7 @@ export default function VenderPage() {
       }
     });
     setBusqueda("");
-  };
+  }, [toast]);
   
   const eliminarDelCarrito = (productoId: string) => {
     setCarrito(prev => prev.filter(item => item.id !== productoId));
@@ -139,6 +150,63 @@ export default function VenderPage() {
   };
   
   const stockBajoCount = productosIniciales.filter(p => p.cantidad <= p.stockMinimo).length;
+
+  // --- Lógica de la cámara ---
+  React.useEffect(() => {
+    if (isScanning) {
+      const getCameraPermission = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          setHasCameraPermission(true);
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error('Error al acceder a la cámara:', error);
+          setHasCameraPermission(false);
+          setIsScanning(false);
+          toast({
+            variant: 'destructive',
+            title: 'Acceso a la cámara denegado',
+            description: 'Por favor, habilita los permisos de la cámara en tu navegador.',
+          });
+        }
+      };
+      getCameraPermission();
+    } else {
+      // Detener la cámara
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    }
+  }, [isScanning, toast]);
+
+  // Simulación de escaneo de código de barras
+  React.useEffect(() => {
+    if (isScanning && hasCameraPermission) {
+      const interval = setInterval(() => {
+        // En una implementación real, aquí se procesaría el frame del video
+        // para detectar un código de barras.
+        // Por ahora, simulamos la detección de un producto aleatorio.
+        const skus = productos.map(p => p.sku);
+        const randomSku = skus[Math.floor(Math.random() * skus.length)];
+        const productoEncontrado = productos.find(p => p.sku === randomSku);
+        
+        if (productoEncontrado) {
+          toast({
+            title: "Producto Escaneado",
+            description: `${productoEncontrado.nombre} añadido al carrito.`,
+          });
+          agregarAlCarrito(productoEncontrado);
+        }
+      }, 3000); // Simula un escaneo cada 3 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [isScanning, hasCameraPermission, productos, agregarAlCarrito, toast]);
 
 
   return (
@@ -252,25 +320,51 @@ export default function VenderPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Buscar por nombre o SKU..."
-                      className="w-full rounded-lg bg-background pl-8"
-                      value={busqueda}
-                      onChange={(e) => setBusqueda(e.target.value)}
-                    />
+                 <div className="flex gap-2">
+                    <div className="relative flex-grow">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="search"
+                        placeholder="Buscar por nombre o SKU..."
+                        className="w-full rounded-lg bg-background pl-8"
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        disabled={isScanning}
+                      />
+                    </div>
                     <Button
-                      variant="outline"
+                      variant={isScanning ? "destructive" : "outline"}
                       size="icon"
-                      className="absolute right-1.5 top-1.5 h-7 w-7"
+                      onClick={() => setIsScanning(prev => !prev)}
                     >
-                      <ScanLine className="h-4 w-4" />
-                      <span className="sr-only">Escanear</span>
+                      {isScanning ? <VideoOff className="h-4 w-4" /> : <ScanLine className="h-4 w-4" />}
+                      <span className="sr-only">{isScanning ? 'Detener Escáner' : 'Escanear Producto'}</span>
                     </Button>
                   </div>
-                  {productosFiltrados.length > 0 && (
+                  
+                  {isScanning && (
+                    <Card className="mt-4">
+                      <CardContent className="p-2">
+                         <div className="aspect-video bg-muted rounded-md flex items-center justify-center relative">
+                            <video ref={videoRef} className="w-full h-full object-cover rounded-md" autoPlay muted playsInline />
+                            <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white p-4 pointer-events-none">
+                               <ScanLine className="h-16 w-16 text-white/80 animate-pulse" />
+                               <p className="mt-2 text-sm text-center">Apunte la cámara al código de barras</p>
+                            </div>
+                         </div>
+                         {hasCameraPermission === false && (
+                           <Alert variant="destructive" className="mt-2">
+                              <AlertTitle>Acceso a la cámara denegado</AlertTitle>
+                              <AlertDescription>
+                                Por favor, permite el acceso a la cámara en los ajustes de tu navegador para usar el escáner.
+                              </AlertDescription>
+                           </Alert>
+                         )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {productosFiltrados.length > 0 && !isScanning && (
                     <Card className="absolute z-10 w-full mt-2">
                       <CardContent className="p-2">
                         {productosFiltrados.map((p) => (
@@ -376,34 +470,4 @@ export default function VenderPage() {
   );
 }
 
-// Necesitamos un componente Label que no está en el proyecto base
-const Label = React.forwardRef<
-  React.ElementRef<"label">,
-  React.ComponentPropsWithoutRef<"label">
->(({ className, ...props }, ref) => (
-  <label
-    ref={ref}
-    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-    {...props}
-  />
-));
-Label.displayName = "Label";
-
-// Componente X para el botón de eliminar
-const X = (props: React.ComponentProps<"svg">) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-);
+    
