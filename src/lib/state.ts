@@ -1,7 +1,7 @@
 
 import { atom } from 'jotai';
-import type { Venta, Producto, Cliente } from './types';
-import { productos as productosIniciales, clientes as clientesIniciales } from './data';
+import type { Venta, Producto, Cliente, Empleado } from './types';
+import { productos as productosIniciales, clientes as clientesIniciales, empleados as empleadosIniciales } from './data';
 
 /**
  * Jotai atoms are used for global state management.
@@ -21,3 +21,10 @@ export const productosAtom = atom<Producto[]>(productosIniciales);
 
 // Atom to store the list of clients.
 export const clientesAtom = atom<Cliente[]>(clientesIniciales);
+
+// Atom to store the list of employees.
+export const empleadosAtom = atom<Empleado[]>(empleadosIniciales);
+
+// Atom to track the currently "logged-in" or active employee.
+// We default to the first employee for now.
+export const empleadoActivoAtom = atom<Empleado | null>(empleadosIniciales[0] || null);

@@ -7,7 +7,8 @@ import {
   Package2,
   ShoppingCart,
   LineChart,
-  Users
+  Users,
+  UserCog
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -77,6 +78,13 @@ export default function Dashboard() {
                 <Users className="h-4 w-4" />
                 Clientes
               </Link>
+              <Link
+                href="/empleados"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <UserCog className="h-4 w-4" />
+                Empleados
+              </Link>
             </nav>
           </div>
         </div>
@@ -136,6 +144,13 @@ export default function Dashboard() {
                     <Users className="h-5 w-5" />
                     Clientes
                 </Link>
+                 <Link
+                    href="/empleados"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                    <UserCog className="h-5 w-5" />
+                    Empleados
+                </Link>
               </nav>
             </SheetContent>
           </Sheet>
@@ -163,7 +178,7 @@ export default function Dashboard() {
           <div className="flex items-center">
             <h1 className="text-lg font-semibold md:text-2xl font-headline">Productos en Inventario</h1>
           </div>
-          <TablaProductos productosIniciales={productosIniciales} />
+          <TablaProductos />
         </main>
       </div>
     </div>

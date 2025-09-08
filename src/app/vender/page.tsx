@@ -19,6 +19,7 @@ import {
   Users,
   UserPlus,
   UserX,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,11 +81,11 @@ import {
 import type { Producto, Variante, Venta, CarritoItem, Cliente } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAtom } from 'jotai'
-import { ventasAtom, productosAtom, clientesAtom } from "@/lib/state";
+import { ventasAtom, productosAtom, clientesAtom, empleadoActivoAtom } from "@/lib/state";
 
 export default function VenderPage() {
   const [productos, setProductos] = useAtom(productosAtom);
-  const [clientes, setClientes] = useAtom(clientesAtom);
+  const [clientes] = useAtom(clientesAtom);
   const [carrito, setCarrito] = React.useState<CarritoItem[]>([]);
   const [busqueda, setBusqueda] = React.useState("");
   const [montoPagado, setMontoPagado] = React.useState<string>("");
@@ -98,6 +99,8 @@ export default function VenderPage() {
   const [dialogoTicketAbierto, setDialogoTicketAbierto] = React.useState(false);
   
   const [, setVentas] = useAtom(ventasAtom);
+  const [empleadoActivo] = useAtom(empleadoActivoAtom);
+
 
   const [descuentoPorcentaje, setDescuentoPorcentaje] = React.useState<number>(0);
   const [clienteSeleccionadoId, setClienteSeleccionadoId] = React.useState<string | null>(null)
@@ -193,10 +196,19 @@ export default function VenderPage() {
   };
   
   const finalizarVenta = () => {
+    if (!empleadoActivo) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No hay un empleado activo para registrar la venta.",
+        });
+        return;
+    }
     // 1. Crear el objeto de la nueva venta
     const nuevaVenta: Venta = {
         id: `venta-${Date.now()}`,
         clienteId: clienteSeleccionadoId,
+        empleadoId: empleadoActivo.id,
         items: carrito,
         subtotal: subtotalCarrito,
         total: totalCarrito,
@@ -377,6 +389,13 @@ export default function VenderPage() {
                 <Users className="h-4 w-4" />
                 Clientes
               </Link>
+               <Link
+                href="/empleados"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <UserCog className="h-4 w-4" />
+                Empleados
+              </Link>
             </nav>
           </div>
         </div>
@@ -436,11 +455,22 @@ export default function VenderPage() {
                     <Users className="h-5 w-5" />
                     Clientes
                 </Link>
+                 <Link
+                    href="/empleados"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                    <UserCog className="h-5 w-5" />
+                    Empleados
+                </Link>
               </nav>
             </SheetContent>
           </Sheet>
           <div className="w-full flex-1">
-             {/* Contenido del header si es necesario */}
+             <div className="flex items-center gap-4">
+                <UserCog className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium text-sm">Cajero Activo:</span>
+                <span className="font-semibold text-sm text-primary">{empleadoActivo?.nombre || 'Ninguno'}</span>
+             </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -452,6 +482,7 @@ export default function VenderPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem>Cambiar Usuario</DropdownMenuItem>
               <DropdownMenuItem>Ajustes</DropdownMenuItem>
               <DropdownMenuItem>Soporte</DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -750,7 +781,7 @@ export default function VenderPage() {
                 <div className="text-sm text-muted-foreground border-t border-b border-dashed py-2">
                     <p>No. Venta: {ventaFinalizada?.id}</p>
                     <p>Fecha: {ventaFinalizada?.fecha.toLocaleString('es-CO')}</p>
-                    <p>Cajero: Administrador</p>
+                    <p>Cajero: {empleadoActivo?.nombre || 'N/A'}</p>
                     <p>Cliente: {clientes.find(c => c.id === ventaFinalizada?.clienteId)?.nombre || 'Cliente General'}</p>
                 </div>
                 <Table>

@@ -1,5 +1,6 @@
 
 
+
 export type Variante = {
   id: string;
   nombre: string; // E.g., "Rojo", "Talla M"
@@ -36,9 +37,17 @@ export type Cliente = {
     puntos: number;
 }
 
+export type Empleado = {
+    id: string;
+    nombre: string;
+    rol: 'administrador' | 'cajero';
+    pin: string; // Para un futuro login/acceso rápido
+}
+
 export type Venta = {
   id: string;
   clienteId: string | null;
+  empleadoId: string;
   items: CarritoItem[];
   subtotal: number;
   total: number;

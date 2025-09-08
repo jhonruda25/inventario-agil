@@ -10,13 +10,13 @@ import {
   Package2,
   ShoppingCart,
   LineChart,
-  Undo2,
   Users,
+  MoreHorizontal,
+  PlusCircle,
   UserCog,
 } from 'lucide-react'
 import { useAtom } from 'jotai'
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -43,63 +43,56 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 
-import { ventasAtom, productosAtom, clientesAtom, empleadosAtom } from "@/lib/state"
-import type { Producto, Venta, Variante } from "@/lib/types"
+import { empleadosAtom } from "@/lib/state"
+import type { Empleado } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import { DialogoEmpleado } from "@/components/empleados/dialogo-empleado"
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
-
-export default function HistorialPage() {
-  const [ventas, setVentas] = useAtom(ventasAtom)
-  const [clientes] = useAtom(clientesAtom)
-  const [empleados] = useAtom(empleadosAtom)
-  const [, setProductos] = useAtom(productosAtom)
+export default function EmpleadosPage() {
+  const [empleados, setEmpleados] = useAtom(empleadosAtom)
   const { toast } = useToast()
 
-  const handleDevolucion = (ventaId: string) => {
-    const ventaADevolver = ventas.find(v => v.id === ventaId);
-    if (!ventaADevolver || ventaADevolver.estado === 'devuelta') {
-      toast({
-        variant: "destructive",
-        title: "Error en la devolución",
-        description: "Esta venta ya ha sido devuelta o no se puede procesar.",
-      });
-      return;
-    }
+  const [dialogoAbierto, setDialogoAbierto] = React.useState(false)
+  const [empleadoSeleccionado, setEmpleadoSeleccionado] = React.useState<Empleado | null>(null)
 
-    // Actualizar el stock
-    setProductos(prevProductos => {
-      const productosActualizados = JSON.parse(JSON.stringify(prevProductos));
-      ventaADevolver.items.forEach(itemDevuelto => {
-        const productoIndex = productosActualizados.findIndex((p: Producto) => p.id === itemDevuelto.productoId);
-        if (productoIndex !== -1) {
-          const varianteIndex = productosActualizados[productoIndex].variantes.findIndex((v: Variante) => v.id === itemDevuelto.variante.id);
-          if (varianteIndex !== -1) {
-            productosActualizados[productoIndex].variantes[varianteIndex].cantidad += itemDevuelto.cantidadEnCarrito;
-          }
-        }
-      });
-      return productosActualizados;
-    });
-
-    // Actualizar el estado de la venta
-    setVentas(prevVentas => 
-      prevVentas.map(venta => 
-        venta.id === ventaId ? { ...venta, estado: 'devuelta' } : venta
-      )
-    );
-
+  const handleGuardarEmpleado = (empleadoGuardado: Empleado) => {
+    setEmpleados((prev) => {
+      const existe = prev.some((e) => e.id === empleadoGuardado.id)
+      if (existe) {
+        return prev.map((e) =>
+          e.id === empleadoGuardado.id ? empleadoGuardado : e
+        )
+      } else {
+        return [...prev, empleadoGuardado]
+      }
+    })
     toast({
-      title: "Devolución Exitosa",
-      description: `La venta ${ventaId} ha sido procesada y el stock ha sido restaurado.`,
-    });
+        title: `Empleado ${empleadoGuardado.id ? 'actualizado' : 'creado'}`,
+        description: `El empleado ${empleadoGuardado.nombre} ha sido guardado correctamente.`
+    })
+    setDialogoAbierto(false)
+  }
+
+  const handleAbrirDialogoNuevo = () => {
+    setEmpleadoSeleccionado(null)
+    setDialogoAbierto(true)
+  }
+
+  const handleAbrirDialogoEditar = (empleado: Empleado) => {
+    setEmpleadoSeleccionado(empleado)
+    setDialogoAbierto(true)
+  }
+  
+  const handleEliminarEmpleado = (id: string) => {
+      if (confirm('¿Estás seguro de que quieres eliminar a este empleado?')) {
+          setEmpleados(prev => prev.filter(e => e.id !== id));
+          toast({
+              variant: 'destructive',
+              title: 'Empleado eliminado',
+          })
+      }
   }
 
   return (
@@ -123,7 +116,7 @@ export default function HistorialPage() {
               </Link>
               <Link
                 href="/historial"
-                className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
                 <LineChart className="h-4 w-4" />
                 Historial de Ventas
@@ -144,7 +137,7 @@ export default function HistorialPage() {
               </Link>
               <Link
                 href="/empleados"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
               >
                 <UserCog className="h-4 w-4" />
                 Empleados
@@ -184,7 +177,7 @@ export default function HistorialPage() {
                 </Link>
                 <Link
                   href="/historial"
-                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl bg-muted px-3 py-2 text-foreground hover:text-foreground"
+                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
                 >
                   <LineChart className="h-5 w-5" />
                   Historial de Ventas
@@ -205,7 +198,7 @@ export default function HistorialPage() {
                 </Link>
                  <Link
                     href="/empleados"
-                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl bg-muted px-3 py-2 text-foreground hover:text-foreground"
                 >
                     <UserCog className="h-5 w-5" />
                     Empleados
@@ -232,82 +225,69 @@ export default function HistorialPage() {
           </DropdownMenu>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-          <div className="flex items-center">
-            <h1 className="text-lg font-semibold md:text-2xl font-headline">Historial de Ventas</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-semibold md:text-2xl font-headline">Gestión de Empleados</h1>
+             <Button size="sm" className="gap-1" onClick={handleAbrirDialogoNuevo} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'}}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Añadir Empleado
+                </span>
+            </Button>
           </div>
           <Card>
             <CardHeader>
-              <CardTitle>Transacciones Recientes</CardTitle>
+              <CardTitle>Lista de Empleados</CardTitle>
               <CardDescription>
-                Aquí puedes ver todas las ventas realizadas y gestionar devoluciones.
+                Administra los roles y el acceso de tu personal.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID Venta</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Empleado</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead>Método Pago</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Rol</TableHead>
                     <TableHead>
                       <span className="sr-only">Acciones</span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ventas.length > 0 ? (
-                    ventas.map((venta) => (
-                      <TableRow key={venta.id}>
-                        <TableCell className="font-mono text-xs">{venta.id}</TableCell>
-                        <TableCell>{new Date(venta.fecha).toLocaleString('es-CO')}</TableCell>
-                        <TableCell>{clientes.find(c => c.id === venta.clienteId)?.nombre || 'N/A'}</TableCell>
-                        <TableCell>{empleados.find(e => e.id === venta.empleadoId)?.nombre || 'N/A'}</TableCell>
+                  {empleados.length > 0 ? (
+                    empleados.map((empleado) => (
+                      <TableRow key={empleado.id}>
+                        <TableCell className="font-medium">{empleado.nombre}</TableCell>
                         <TableCell>
-                           <ul className="list-disc list-inside text-xs">
-                            {venta.items.map(item => (
-                                <li key={item.variante.id}>
-                                    {item.cantidadEnCarrito}x {item.nombreProducto} ({item.variante.nombre})
-                                </li>
-                            ))}
-                           </ul>
-                        </TableCell>
-                         <TableCell>
-                            <Badge variant="outline" className="capitalize">{venta.metodoPago}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={venta.estado === 'devuelta' ? 'destructive' : 'secondary'} className="capitalize">{venta.estado}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {venta.descuento && (
-                              <div className="text-xs text-destructive line-through">{formatCurrency(venta.subtotal)}</div>
-                          )}
-                          {formatCurrency(venta.total)}
+                          <Badge variant={empleado.rol === 'administrador' ? 'default' : 'secondary'} className="capitalize">{empleado.rol}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleDevolucion(venta.id)}
-                            disabled={venta.estado === 'devuelta'}
-                          >
-                            <Undo2 className="mr-2 h-3 w-3" />
-                            Devolución
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                aria-haspopup="true"
+                                size="icon"
+                                variant="ghost"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Alternar menú</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleAbrirDialogoEditar(empleado)}>Editar</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleEliminarEmpleado(empleado.id)}>Eliminar</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={3}
                         className="h-24 text-center"
                       >
-                        No hay ventas registradas aún.
+                        No hay empleados registrados.
                       </TableCell>
                     </TableRow>
                   )}
@@ -316,12 +296,19 @@ export default function HistorialPage() {
             </CardContent>
             <CardFooter>
               <div className="text-xs text-muted-foreground">
-                Mostrando <strong>{ventas.length}</strong> venta(s).
+                Mostrando <strong>{empleados.length}</strong> empleado(s).
               </div>
             </CardFooter>
           </Card>
         </main>
       </div>
+
+       <DialogoEmpleado
+        open={dialogoAbierto}
+        onOpenChange={setDialogoAbierto}
+        onSave={handleGuardarEmpleado}
+        empleado={empleadoSeleccionado}
+      />
     </div>
   )
 }

@@ -13,6 +13,7 @@ import {
   Users,
   MoreHorizontal,
   PlusCircle,
+  UserCog,
 } from 'lucide-react'
 import { useAtom } from 'jotai'
 
@@ -145,6 +146,13 @@ export default function ClientesPage() {
                 <Users className="h-4 w-4" />
                 Clientes
               </Link>
+              <Link
+                href="/empleados"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <UserCog className="h-4 w-4" />
+                Empleados
+              </Link>
             </nav>
           </div>
         </div>
@@ -198,6 +206,13 @@ export default function ClientesPage() {
                 >
                     <Users className="h-5 w-5" />
                     Clientes
+                </Link>
+                 <Link
+                    href="/empleados"
+                    className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                    <UserCog className="h-5 w-5" />
+                    Empleados
                 </Link>
               </nav>
             </SheetContent>

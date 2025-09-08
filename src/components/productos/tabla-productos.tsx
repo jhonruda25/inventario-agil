@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import { MoreHorizontal, PlusCircle, Search, ChevronDown, Upload } from "lucide-react"
+import { useAtom } from 'jotai'
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,11 +34,7 @@ import { DialogoProducto } from "./dialogo-producto"
 import { DialogoSugerenciaIA } from "./dialogo-sugerencia-ia"
 import { DialogoCargaMasiva } from "./dialogo-carga-masiva"
 import { useToast } from "@/hooks/use-toast"
-
-
-type TablaProductosProps = {
-  productosIniciales: Producto[]
-}
+import { productosAtom } from "@/lib/state"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("es-CO", {
@@ -149,8 +146,8 @@ function FilaProducto({
 }
 
 
-export function TablaProductos({ productosIniciales }: TablaProductosProps) {
-  const [productos, setProductos] = React.useState<Producto[]>(productosIniciales)
+export function TablaProductos() {
+  const [productos, setProductos] = useAtom(productosAtom)
   const [busqueda, setBusqueda] = React.useState("")
   const [dialogoAbierto, setDialogoAbierto] = React.useState(false)
   const [dialogoIAAbierto, setDialogoIAAbierto] = React.useState(false)
