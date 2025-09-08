@@ -239,17 +239,17 @@ export function TablaProductos({ productosIniciales }: TablaProductosProps) {
                 </TableHead>
               </TableRow>
             </TableHeader>
-            
-            {productosFiltrados.map((producto) => (
-              <FilaProducto 
-                key={producto.id}
-                producto={producto}
-                onAbrirDialogoEditar={handleAbrirDialogoEditar}
-                onAbrirDialogoIA={handleAbrirDialogoIA}
-                onEliminarProducto={handleEliminarProducto}
-              />
-            ))}
-              
+            <TableBody>
+              {productosFiltrados.map((producto) => (
+                <FilaProducto 
+                  key={producto.id}
+                  producto={producto}
+                  onAbrirDialogoEditar={handleAbrirDialogoEditar}
+                  onAbrirDialogoIA={handleAbrirDialogoIA}
+                  onEliminarProducto={handleEliminarProducto}
+                />
+              ))}
+            </TableBody>
           </Table>
         </CardContent>
         <CardFooter>
