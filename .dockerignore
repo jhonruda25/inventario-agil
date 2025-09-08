@@ -1,0 +1,17 @@
+# Ignorar dependencias, se instalarán dentro del contenedor
+node_modules
+
+# Ignorar logs de npm
+npm-debug.log
+
+# Ignorar directorio de build de Next.js
+.next
+
+# Ignorar archivos de configuración de Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Ignorar archivos de Git
+.git
+.gitignore
