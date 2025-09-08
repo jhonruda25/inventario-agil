@@ -13,7 +13,8 @@ import {
   VideoOff,
   X,
   ChevronDown,
-  Printer
+  Printer,
+  LineChart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,28 +65,13 @@ import { Label } from "@/components/ui/label";
 
 
 import { productos as productosIniciales } from "@/lib/data";
-import type { Producto, Variante } from "@/lib/types";
+import type { Producto, Variante, Venta, CarritoItem } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-
-type CarritoItem = {
-  productoId: string;
-  variante: Variante;
-  nombreProducto: string;
-  cantidadEnCarrito: number;
-};
-
-type Venta = {
-  items: CarritoItem[];
-  total: number;
-  metodoPago: string;
-  montoPagado: number | null;
-  cambio: number | null;
-  fecha: Date;
-}
-
+import { useAtom } from 'jotai'
+import { ventasAtom } from "@/lib/state";
 
 export default function VenderPage() {
-  const [productos] = React.useState<Producto[]>(productosIniciales);
+  const [productos, setProductos] = React.useState<Producto[]>(productosIniciales);
   const [carrito, setCarrito] = React.useState<CarritoItem[]>([]);
   const [busqueda, setBusqueda] = React.useState("");
   const [montoPagado, setMontoPagado] = React.useState<string>("");
@@ -97,6 +83,8 @@ export default function VenderPage() {
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<Producto | null>(null);
   const [ventaFinalizada, setVentaFinalizada] = React.useState<Venta | null>(null);
   const [dialogoTicketAbierto, setDialogoTicketAbierto] = React.useState(false);
+  
+  const [, setVentas] = useAtom(ventasAtom);
 
 
   // --- Estados para el escáner ---
@@ -181,18 +169,23 @@ export default function VenderPage() {
   };
   
   const finalizarVenta = () => {
-    // En un caso real, aquí se actualizaría el inventario, se guardaría la venta en la BD, etc.
-    const venta: Venta = {
+    // Aquí actualizamos el estado global de ventas
+    const nuevaVenta: Venta = {
+        id: `venta-${Date.now()}`,
         items: carrito,
         total: totalCarrito,
         metodoPago: metodoPago,
-        montoPagado: montoPagado ? parseFloat(montoPagado) : null,
+        montoPagado: montoPagado ? parseFloat(montoPagado) : totalCarrito,
         cambio: cambio,
         fecha: new Date(),
     };
     
-    setVentaFinalizada(venta);
+    setVentas(prevVentas => [...prevVentas, nuevaVenta]);
+    setVentaFinalizada(nuevaVenta);
     setDialogoTicketAbierto(true);
+
+    // TODO: Actualizar el stock de los productos
+    // Esta parte es importante para un sistema real.
 
     // Resetear estado para la siguiente venta
     setCarrito([]);
@@ -308,6 +301,13 @@ export default function VenderPage() {
                 <ShoppingCart className="h-4 w-4" />
                 Punto de Venta
               </Link>
+               <Link
+                href="/historial"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <LineChart className="h-4 w-4" />
+                Historial de Ventas
+              </Link>
               <Link
                 href="/"
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
@@ -352,6 +352,13 @@ export default function VenderPage() {
                 >
                   <ShoppingCart className="h-5 w-5" />
                   Punto de Venta
+                </Link>
+                 <Link
+                  href="/historial"
+                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                  <LineChart className="h-5 w-5" />
+                  Historial de Ventas
                 </Link>
                 <Link
                   href="/"
@@ -560,7 +567,7 @@ export default function VenderPage() {
                             <p className="text-3xl font-bold text-primary">{formatCurrency(cambio)}</p>
                         </div>
                     )}
-                    <Button size="lg" className="w-full mt-4" style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'}} onClick={finalizarVenta} disabled={carrito.length === 0 || (metodoPago === 'efectivo' && cambio === null)}>
+                    <Button size="lg" className="w-full mt-4" style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))'}} onClick={finalizarVenta} disabled={carrito.length === 0 || (metodoPago === 'efectivo' && totalCarrito > 0 && cambio === null)}>
                         Finalizar Venta
                     </Button>
                 </CardFooter>
@@ -640,7 +647,7 @@ export default function VenderPage() {
                         ))}
                     </TableBody>
                 </Table>
-                <div className="space-y-1">
+                <div className="space-y-1 border-t pt-2 mt-2">
                     <div className="flex justify-between">
                         <span>Subtotal:</span>
                         <span>{formatCurrency(ventaFinalizada?.total ?? 0)}</span>
@@ -675,5 +682,3 @@ export default function VenderPage() {
     </div>
   );
 }
-
-    

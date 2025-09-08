@@ -5,6 +5,7 @@ import {
   Package,
   Package2,
   ShoppingCart,
+  LineChart
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,13 @@ export default function Dashboard() {
               >
                 <ShoppingCart className="h-4 w-4" />
                 Punto de Venta
+              </Link>
+               <Link
+                href="/historial"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <LineChart className="h-4 w-4" />
+                Historial de Ventas
               </Link>
               <Link
                 href="/"
@@ -92,6 +100,13 @@ export default function Dashboard() {
                 >
                   <ShoppingCart className="h-5 w-5" />
                   Punto de Venta
+                </Link>
+                 <Link
+                  href="/historial"
+                  className="mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground"
+                >
+                  <LineChart className="h-5 w-5" />
+                  Historial de Ventas
                 </Link>
                 <Link
                   href="/"
