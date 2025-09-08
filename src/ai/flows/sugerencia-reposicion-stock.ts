@@ -58,5 +58,3 @@ const sugerirReposicionStockFlow = ai.defineFlow(
     return output!;
   }
 );
-
-
