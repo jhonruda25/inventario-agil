@@ -1,15 +1,17 @@
 
 
 export type Variante = {
-  id: string;
+  id: string; // Puede ser un UUID o un ID generado
   nombre: string; // E.g., "Rojo", "Talla M"
   sku: string;
   cantidad: number;
   precio: number;
 };
 
+// Como se almacena en la BD
 export type Producto = {
-  id: string;
+  _id?: string; // MongoDB ID
+  id?: string;
   nombre: string;
   descripcion?: string; // Descripción general del producto
   stockMinimo: number; // Se puede aplicar a nivel de producto o por variante
@@ -28,7 +30,8 @@ export type CarritoItem = {
 };
 
 export type Cliente = {
-    id: string;
+    _id?: string; // MongoDB ID
+    id?: string;
     nombre: string;
     email: string;
     telefono: string;
@@ -39,14 +42,16 @@ export type Cliente = {
 export type RolEmpleado = 'administrador' | 'cajero' | 'inventario';
 
 export type Empleado = {
-    id: string;
+    _id?: string; // MongoDB ID
+    id?: string;
     nombre: string;
     rol: RolEmpleado;
-    pin: string; // Para un futuro login/acceso rápido
+    pin: string;
 }
 
 export type Venta = {
-  id: string;
+  _id?: string; // MongoDB ID
+  id?: string;
   clienteId: string | null;
   empleadoId: string;
   items: CarritoItem[];
