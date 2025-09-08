@@ -414,7 +414,7 @@ export default function VenderPage() {
         </header>
 
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 print:p-0">
-          <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3 print:hidden">
             <div className="relative lg:col-span-2">
               <Card>
                 <CardHeader>
@@ -631,35 +631,37 @@ export default function VenderPage() {
       </Dialog>
 
     <Dialog open={dialogoTicketAbierto} onOpenChange={setDialogoTicketAbierto}>
-      <DialogContent className="sm:max-w-md print:shadow-none print:border-none">
-        <div id="ticket">
-            <DialogHeader>
-                <DialogTitle className="text-center">¡Venta Exitosa!</DialogTitle>
-                <DialogDescription className="text-center">
-                    Resumen de la Transacción
+      <DialogContent className="sm:max-w-md print:shadow-none print:border-none print:p-0">
+        <div id="ticket" className="p-4">
+            <DialogHeader className="text-center">
+                <DialogTitle className="text-2xl font-bold">Tienda Ágil</DialogTitle>
+                <DialogDescription>
+                    NIT: 900.123.456-7 <br />
+                    Calle Falsa 123, Bogotá, Colombia <br />
+                    TICKET DE VENTA
                 </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
-                <div className="text-center text-sm text-muted-foreground">
-                    <p>Tienda Ágil S.A.S.</p>
-                    <p>NIT: 900.123.456-7</p>
-                    <p>Calle Falsa 123, Bogotá</p>
-                    <p>{ventaFinalizada?.fecha.toLocaleString('es-CO')}</p>
+                <div className="text-sm text-muted-foreground border-t border-b border-dashed py-2">
+                    <p>No. Venta: {ventaFinalizada?.id}</p>
+                    <p>Fecha: {ventaFinalizada?.fecha.toLocaleString('es-CO')}</p>
+                    <p>Cajero: Administrador</p>
                 </div>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                        <TableHead>Producto</TableHead>
+                        <TableHead className="text-left">Producto</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {ventaFinalizada?.items.map(item => (
                             <TableRow key={item.variante.id}>
-                                <TableCell>
-                                    {item.cantidadEnCarrito} x {item.nombreProducto} ({item.variante.nombre})
+                                <TableCell className="text-left align-top">
+                                    <div className="font-medium">{item.nombreProducto} ({item.variante.nombre})</div>
+                                    <div className="text-muted-foreground">{item.cantidadEnCarrito} x {formatCurrency(item.variante.precio)}</div>
                                 </TableCell>
-                                <TableCell className="text-right">{formatCurrency(item.cantidadEnCarrito * item.variante.precio)}</TableCell>
+                                <TableCell className="text-right align-top">{formatCurrency(item.cantidadEnCarrito * item.variante.precio)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -674,7 +676,7 @@ export default function VenderPage() {
                         <span>{formatCurrency(ventaFinalizada?.total ?? 0)}</span>
                     </div>
                 </div>
-                 <div className="text-center text-sm space-y-1 border-t pt-4 mt-4">
+                 <div className="text-center text-sm space-y-1 border-t border-dashed pt-4 mt-4">
                     <p>Pagado con: <span className="font-medium capitalize">{ventaFinalizada?.metodoPago}</span></p>
                     {ventaFinalizada?.metodoPago === 'efectivo' && (
                         <>
@@ -682,7 +684,7 @@ export default function VenderPage() {
                         <p>Cambio: {formatCurrency(ventaFinalizada?.cambio ?? 0)}</p>
                         </>
                     )}
-                    <p className="pt-4">¡Gracias por tu compra!</p>
+                    <p className="pt-4 font-semibold">¡Gracias por tu compra!</p>
                 </div>
             </div>
         </div>
@@ -699,5 +701,3 @@ export default function VenderPage() {
     </div>
   );
 }
-
-    
