@@ -1,4 +1,5 @@
 
+import type { ObjectId } from 'mongodb';
 
 export type Variante = {
   id: string; // Puede ser un UUID o un ID generado
@@ -10,7 +11,7 @@ export type Variante = {
 
 // Como se almacena en la BD
 export type Producto = {
-  _id?: string; // MongoDB ID
+  _id?: ObjectId | string;
   id?: string;
   nombre: string;
   descripcion?: string; // Descripción general del producto
@@ -30,7 +31,7 @@ export type CarritoItem = {
 };
 
 export type Cliente = {
-    _id?: string; // MongoDB ID
+    _id?: ObjectId | string;
     id?: string;
     nombre: string;
     email: string;
@@ -42,7 +43,7 @@ export type Cliente = {
 export type RolEmpleado = 'administrador' | 'cajero' | 'inventario';
 
 export type Empleado = {
-    _id?: string; // MongoDB ID
+    _id?: ObjectId | string;
     id?: string;
     nombre: string;
     rol: RolEmpleado;
@@ -50,7 +51,7 @@ export type Empleado = {
 }
 
 export type Venta = {
-  _id?: string; // MongoDB ID
+  _id?: ObjectId | string;
   id?: string;
   clienteId: string | null;
   empleadoId: string;

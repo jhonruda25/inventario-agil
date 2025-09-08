@@ -15,6 +15,7 @@ import {
   PlusCircle,
   UserCog,
   LogOut,
+  Trash2
 } from 'lucide-react'
 import { useAtom } from 'jotai'
 import { useRouter } from "next/navigation"
@@ -51,6 +52,7 @@ import { empleadosAtom, empleadoActivoAtom } from "@/lib/state"
 import type { Empleado } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { DialogoEmpleado } from "@/components/empleados/dialogo-empleado"
+import { guardarEmpleado, eliminarEmpleado as eliminarEmpleadoAction } from "@/app/actions"
 
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useAtom(empleadosAtom)
@@ -61,22 +63,41 @@ export default function EmpleadosPage() {
   const [dialogoAbierto, setDialogoAbierto] = React.useState(false)
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = React.useState<Empleado | null>(null)
 
-  const handleGuardarEmpleado = (empleadoGuardado: Empleado) => {
-    setEmpleados((prev) => {
-      const existe = prev.some((e) => e.id === empleadoGuardado.id)
-      if (existe) {
-        return prev.map((e) =>
-          e.id === empleadoGuardado.id ? empleadoGuardado : e
-        )
-      } else {
-        return [...prev, empleadoGuardado]
+  const handleGuardarEmpleado = async (empleado: Omit<Empleado, 'id'>) => {
+     try {
+      const id = empleadoSeleccionado?.id;
+      const empleadoConId = { ...empleado, id };
+      const empleadoId = await guardarEmpleado(empleadoConId);
+      
+      const empleadoGuardado = {
+        ...empleado,
+        id: empleadoId,
+        _id: empleadoId
       }
-    })
-    toast({
-        title: `Empleado ${empleadoGuardado.id ? 'actualizado' : 'creado'}`,
-        description: `El empleado ${empleadoGuardado.nombre} ha sido guardado correctamente.`
-    })
-    setDialogoAbierto(false)
+
+      setEmpleados((prev) => {
+        const existe = prev.some((c) => c.id === empleadoId);
+        if (existe) {
+          return prev.map((c) =>
+            c.id === empleadoId ? empleadoGuardado : c
+          )
+        } else {
+          return [...prev, empleadoGuardado]
+        }
+      })
+      toast({
+          title: `Empleado ${id ? 'actualizado' : 'creado'}`,
+          description: `El empleado ${empleado.nombre} ha sido guardado correctamente.`
+      })
+      setDialogoAbierto(false)
+      setEmpleadoSeleccionado(null)
+    } catch(error) {
+       toast({
+        variant: 'destructive',
+        title: 'Error al guardar',
+        description: error instanceof Error ? error.message : 'No se pudo guardar el empleado.'
+      })
+    }
   }
 
   const handleAbrirDialogoNuevo = () => {
@@ -89,13 +110,22 @@ export default function EmpleadosPage() {
     setDialogoAbierto(true)
   }
   
-  const handleEliminarEmpleado = (id: string) => {
+  const handleEliminarEmpleado = async (id: string) => {
       if (confirm('¿Estás seguro de que quieres eliminar a este empleado?')) {
-          setEmpleados(prev => prev.filter(e => e.id !== id));
-          toast({
+          try {
+            await eliminarEmpleadoAction(id);
+            setEmpleados(prev => prev.filter(e => e.id !== id));
+            toast({
+                variant: 'destructive',
+                title: 'Empleado eliminado',
+            })
+          } catch (error) {
+             toast({
               variant: 'destructive',
-              title: 'Empleado eliminado',
-          })
+              title: 'Error al eliminar',
+              description: error instanceof Error ? error.message : 'No se pudo eliminar el empleado.'
+            })
+          }
       }
   }
 
@@ -284,7 +314,10 @@ export default function EmpleadosPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => handleAbrirDialogoEditar(empleado)}>Editar</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleEliminarEmpleado(empleado.id)}>Eliminar</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleEliminarEmpleado(empleado.id!)}>
+                                 <Trash2 className="mr-2 h-4 w-4" />
+                                 <span>Eliminar</span>
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

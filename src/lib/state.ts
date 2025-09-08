@@ -1,6 +1,5 @@
-
 import { atom } from 'jotai';
-import type { Empleado } from './types';
+import type { Empleado, Producto, Cliente, Venta } from './types';
 
 /**
  * Jotai atoms are used for global state management.
@@ -11,5 +10,11 @@ import type { Empleado } from './types';
  */
 
 // Atom to track the currently "logged-in" or active employee.
-// This is one of the few atoms we'll keep, as it represents client-side session state.
 export const empleadoActivoAtom = atom<Empleado | null>(null);
+
+// Atoms for managing data during the client-side session.
+// These will be initialized with data fetched from the server.
+export const productosAtom = atom<Producto[]>([]);
+export const clientesAtom = atom<Cliente[]>([]);
+export const empleadosAtom = atom<Empleado[]>([]);
+export const ventasAtom = atom<Venta[]>([]);

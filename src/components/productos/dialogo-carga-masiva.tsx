@@ -30,7 +30,7 @@ type CsvRow = {
 type DialogoCargaMasivaProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCarga: (productos: Producto[]) => void
+  onCarga: (productos: Omit<Producto, 'id'>[]) => void
 }
 
 export function DialogoCargaMasiva({ open, onOpenChange, onCarga }: DialogoCargaMasivaProps) {
@@ -109,8 +109,8 @@ export function DialogoCargaMasiva({ open, onOpenChange, onCarga }: DialogoCarga
     })
   }
   
-  const parseCsvData = (data: CsvRow[]): Producto[] => {
-    const productosAgrupados: { [key: string]: Partial<Producto> & { variantes: Variante[] } } = {};
+  const parseCsvData = (data: CsvRow[]): Omit<Producto, 'id'>[] => {
+    const productosAgrupados: { [key: string]: Omit<Producto, 'id'> & { variantes: Variante[] } } = {};
 
     data.forEach((row, index) => {
         const { nombre, sku, precio, cantidad, stockMinimo, variante_nombre } = row;
@@ -121,7 +121,6 @@ export function DialogoCargaMasiva({ open, onOpenChange, onCarga }: DialogoCarga
 
         if (!productosAgrupados[nombre]) {
             productosAgrupados[nombre] = {
-                id: `prod-${Date.now()}-${Object.keys(productosAgrupados).length}`,
                 nombre: nombre,
                 stockMinimo: parseInt(stockMinimo, 10),
                 ultimaModificacion: new Date().toISOString().split('T')[0],
@@ -147,7 +146,7 @@ export function DialogoCargaMasiva({ open, onOpenChange, onCarga }: DialogoCarga
         productosAgrupados[nombre].variantes.push(variante);
     });
 
-    return Object.values(productosAgrupados) as Producto[];
+    return Object.values(productosAgrupados);
 };
 
 

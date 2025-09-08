@@ -49,6 +49,7 @@ import {
 import { ventasAtom, productosAtom, clientesAtom, empleadosAtom, empleadoActivoAtom } from "@/lib/state"
 import type { Producto, Venta, Variante } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import { procesarDevolucion } from "@/app/actions"
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("es-CO", {
@@ -67,7 +68,7 @@ export default function HistorialPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleDevolucion = (ventaId: string) => {
+  const handleDevolucion = async (ventaId: string) => {
     const ventaADevolver = ventas.find(v => v.id === ventaId);
     if (!ventaADevolver || ventaADevolver.estado === 'devuelta') {
       toast({
@@ -77,33 +78,47 @@ export default function HistorialPage() {
       });
       return;
     }
+    
+    if (!confirm('¿Estás seguro de que quieres procesar la devolución de esta venta?')) {
+      return;
+    }
 
-    // Actualizar el stock
-    setProductos(prevProductos => {
-      const productosActualizados = JSON.parse(JSON.stringify(prevProductos));
-      ventaADevolver.items.forEach(itemDevuelto => {
-        const productoIndex = productosActualizados.findIndex((p: Producto) => p.id === itemDevuelto.productoId);
-        if (productoIndex !== -1) {
-          const varianteIndex = productosActualizados[productoIndex].variantes.findIndex((v: Variante) => v.id === itemDevuelto.variante.id);
-          if (varianteIndex !== -1) {
-            productosActualizados[productoIndex].variantes[varianteIndex].cantidad += itemDevuelto.cantidadEnCarrito;
+    try {
+      await procesarDevolucion(ventaId);
+
+      // Actualizar el stock localmente
+      setProductos(prevProductos => {
+        const productosActualizados = JSON.parse(JSON.stringify(prevProductos));
+        ventaADevolver.items.forEach(itemDevuelto => {
+          const productoIndex = productosActualizados.findIndex((p: Producto) => p.id === itemDevuelto.productoId);
+          if (productoIndex !== -1) {
+            const varianteIndex = productosActualizados[productoIndex].variantes.findIndex((v: Variante) => v.id === itemDevuelto.variante.id);
+            if (varianteIndex !== -1) {
+              productosActualizados[productoIndex].variantes[varianteIndex].cantidad += itemDevuelto.cantidadEnCarrito;
+            }
           }
-        }
+        });
+        return productosActualizados;
       });
-      return productosActualizados;
-    });
 
-    // Actualizar el estado de la venta
-    setVentas(prevVentas => 
-      prevVentas.map(venta => 
-        venta.id === ventaId ? { ...venta, estado: 'devuelta' } : venta
-      )
-    );
+      // Actualizar el estado de la venta localmente
+      setVentas(prevVentas => 
+        prevVentas.map(venta => 
+          venta.id === ventaId ? { ...venta, estado: 'devuelta' } : venta
+        )
+      );
 
-    toast({
-      title: "Devolución Exitosa",
-      description: `La venta ${ventaId} ha sido procesada y el stock ha sido restaurado.`,
-    });
+      toast({
+        title: "Devolución Exitosa",
+        description: `La venta ${ventaId} ha sido procesada y el stock ha sido restaurado.`,
+      });
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Error en la devolución",
+        description: error instanceof Error ? error.message : "No se pudo procesar la devolución.",
+      });
+    }
   }
 
   const handleLogout = () => {
@@ -291,7 +306,7 @@ export default function HistorialPage() {
                   {ventas.length > 0 ? (
                     ventas.map((venta) => (
                       <TableRow key={venta.id}>
-                        <TableCell className="font-mono text-xs">{venta.id}</TableCell>
+                        <TableCell className="font-mono text-xs">{venta.id?.slice(-8)}</TableCell>
                         <TableCell>{new Date(venta.fecha).toLocaleString('es-CO')}</TableCell>
                         <TableCell>{clientes.find(c => c.id === venta.clienteId)?.nombre || 'N/A'}</TableCell>
                         <TableCell>{empleados.find(e => e.id === venta.empleadoId)?.nombre || 'N/A'}</TableCell>
@@ -320,7 +335,7 @@ export default function HistorialPage() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => handleDevolucion(venta.id)}
+                            onClick={() => handleDevolucion(venta.id!)}
                             disabled={venta.estado === 'devuelta'}
                           >
                             <Undo2 className="mr-2 h-3 w-3" />

@@ -35,7 +35,7 @@ const empleadoSchema = z.object({
 type DialogoEmpleadoProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (empleado: Empleado) => void
+  onSave: (empleado: Omit<Empleado, 'id'>) => void
   empleado: Empleado | null
 }
 
@@ -66,11 +66,7 @@ export function DialogoEmpleado({ open, onOpenChange, onSave, empleado }: Dialog
   }, [empleado, open, form])
 
   function onSubmit(values: z.infer<typeof empleadoSchema>) {
-    const empleadoAGuardar: Empleado = {
-      id: empleado?.id || `emp-${Date.now()}`,
-      ...values,
-    };
-    onSave(empleadoAGuardar)
+    onSave(values);
   }
 
   return (

@@ -84,6 +84,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAtom } from 'jotai'
 import { ventasAtom, productosAtom, clientesAtom, empleadoActivoAtom } from "@/lib/state";
 import { useRouter } from "next/navigation";
+import { finalizarVenta as finalizarVentaAction } from "@/app/actions";
 
 export default function VenderPage() {
   const [productos, setProductos] = useAtom(productosAtom);
@@ -100,7 +101,7 @@ export default function VenderPage() {
   const [ventaFinalizada, setVentaFinalizada] = React.useState<Venta | null>(null);
   const [dialogoTicketAbierto, setDialogoTicketAbierto] = React.useState(false);
   
-  const [, setVentas] = useAtom(ventasAtom);
+  const [ventas, setVentas] = useAtom(ventasAtom);
   const [empleadoActivo, setEmpleadoActivo] = useAtom(empleadoActivoAtom);
   const router = useRouter();
 
@@ -164,7 +165,7 @@ export default function VenderPage() {
         }
       } else {
         if (stockDisponible > 0) {
-          return [...prev, { productoId: producto.id, nombreProducto: producto.nombre, variante, cantidadEnCarrito: 1 }];
+          return [...prev, { productoId: producto.id!, nombreProducto: producto.nombre, variante, cantidadEnCarrito: 1 }];
         } else {
           toast({
             variant: "destructive",
@@ -198,7 +199,7 @@ export default function VenderPage() {
     }
   };
   
-  const finalizarVenta = () => {
+  const finalizarVenta = async () => {
     if (!empleadoActivo) {
         toast({
             variant: "destructive",
@@ -208,10 +209,9 @@ export default function VenderPage() {
         return;
     }
     // 1. Crear el objeto de la nueva venta
-    const nuevaVenta: Venta = {
-        id: `venta-${Date.now()}`,
+    const nuevaVentaSinId: Omit<Venta, 'id'> = {
         clienteId: clienteSeleccionadoId,
-        empleadoId: empleadoActivo.id,
+        empleadoId: empleadoActivo.id!,
         items: carrito,
         subtotal: subtotalCarrito,
         total: totalCarrito,
@@ -223,35 +223,46 @@ export default function VenderPage() {
         estado: 'completada',
     };
     
-    // 2. Actualizar el stock de los productos
-    setProductos(prevProductos => {
-        const productosActualizados = JSON.parse(JSON.stringify(prevProductos));
-        
-        carrito.forEach(itemCarrito => {
-            const productoIndex = productosActualizados.findIndex((p: Producto) => p.id === itemCarrito.productoId);
-            if (productoIndex !== -1) {
-                const varianteIndex = productosActualizados[productoIndex].variantes.findIndex((v: Variante) => v.id === itemCarrito.variante.id);
-                if (varianteIndex !== -1) {
-                    productosActualizados[productoIndex].variantes[varianteIndex].cantidad -= itemCarrito.cantidadEnCarrito;
-                }
-            }
-        });
-        
-        return productosActualizados;
-    });
+    try {
+        const ventaId = await finalizarVentaAction(nuevaVentaSinId);
+        const ventaConfirmada = { ...nuevaVentaSinId, id: ventaId };
 
-    // 3. Añadir la venta al historial global
-    setVentas(prevVentas => [...prevVentas, nuevaVenta]);
-    
-    // 4. Mostrar el ticket y resetear el estado local
-    setVentaFinalizada(nuevaVenta);
-    setDialogoTicketAbierto(true);
-    setCarrito([]);
-    setMontoPagado("");
-    setCambio(null);
-    setMetodoPago("efectivo");
-    setDescuentoPorcentaje(0);
-    setClienteSeleccionadoId(null);
+         // 2. Actualizar el stock de los productos localmente para reflejar el cambio en la UI
+        setProductos(prevProductos => {
+            const productosActualizados = JSON.parse(JSON.stringify(prevProductos));
+            
+            carrito.forEach(itemCarrito => {
+                const productoIndex = productosActualizados.findIndex((p: Producto) => p.id === itemCarrito.productoId);
+                if (productoIndex !== -1) {
+                    const varianteIndex = productosActualizados[productoIndex].variantes.findIndex((v: Variante) => v.id === itemCarrito.variante.id);
+                    if (varianteIndex !== -1) {
+                        productosActualizados[productoIndex].variantes[varianteIndex].cantidad -= itemCarrito.cantidadEnCarrito;
+                    }
+                }
+            });
+            
+            return productosActualizados;
+        });
+
+        // 3. Añadir la venta al historial global local
+        setVentas(prevVentas => [...prevVentas, ventaConfirmada]);
+        
+        // 4. Mostrar el ticket y resetear el estado local
+        setVentaFinalizada(ventaConfirmada);
+        setDialogoTicketAbierto(true);
+        setCarrito([]);
+        setMontoPagado("");
+        setCambio(null);
+        setMetodoPago("efectivo");
+        setDescuentoPorcentaje(0);
+        setClienteSeleccionadoId(null);
+    } catch(error) {
+        toast({
+            variant: "destructive",
+            title: "Error al finalizar la venta",
+            description: error instanceof Error ? error.message : "No se pudo registrar la venta en la base de datos.",
+        });
+    }
   }
 
   const formatCurrency = (amount: number) => {
@@ -701,7 +712,7 @@ export default function VenderPage() {
                                                 key={cliente.id}
                                                 value={cliente.nombre}
                                                 onSelect={() => {
-                                                    setClienteSeleccionadoId(cliente.id)
+                                                    setClienteSeleccionadoId(cliente.id!)
                                                     setOpen(false)
                                                 }}
                                                 >
@@ -810,7 +821,7 @@ export default function VenderPage() {
             </DialogHeader>
             <div className="py-4 space-y-4">
                 <div className="text-sm text-muted-foreground border-t border-b border-dashed py-2">
-                    <p>No. Venta: {ventaFinalizada?.id}</p>
+                    <p>No. Venta: {ventaFinalizada?.id?.slice(-8)}</p>
                     <p>Fecha: {ventaFinalizada?.fecha.toLocaleString('es-CO')}</p>
                     <p>Cajero: {empleadoActivo?.nombre || 'N/A'}</p>
                     <p>Cliente: {clientes.find(c => c.id === ventaFinalizada?.clienteId)?.nombre || 'Cliente General'}</p>

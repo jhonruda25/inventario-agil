@@ -2,16 +2,59 @@
 "use client"
 
 import * as React from "react"
-import { useAtom } from "jotai"
+import { useAtom, useSetAtom } from "jotai"
 import { useRouter, usePathname } from "next/navigation"
-import { empleadoActivoAtom } from "@/lib/state"
-import type { RolEmpleado } from "@/lib/types"
+import { empleadoActivoAtom, productosAtom, clientesAtom, empleadosAtom, ventasAtom } from "@/lib/state"
+import type { RolEmpleado, Producto, Cliente, Empleado, Venta } from "@/lib/types"
+import { obtenerProductos, obtenerClientes, obtenerEmpleados, obtenerVentas } from "@/app/actions"
 
 const rutasPermitidas: Record<RolEmpleado, string[]> = {
     administrador: ['/', '/vender', '/historial', '/clientes', '/empleados'],
     cajero: ['/vender', '/historial', '/clientes'],
     inventario: ['/']
 }
+
+function DataProvider({ children }: { children: React.ReactNode }) {
+  const setProductos = useSetAtom(productosAtom);
+  const setClientes = useSetAtom(clientesAtom);
+  const setEmpleados = useSetAtom(empleadosAtom);
+  const setVentas = useSetAtom(ventasAtom);
+  const [dataLoaded, setDataLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    async function fetchData() {
+      try {
+        const [productosData, clientesData, empleadosData, ventasData] = await Promise.all([
+          obtenerProductos(),
+          obtenerClientes(),
+          obtenerEmpleados(),
+          obtenerVentas(),
+        ]);
+        setProductos(productosData);
+        setClientes(clientesData);
+        setEmpleados(empleadosData);
+        setVentas(ventasData.map(v => ({...v, fecha: new Date(v.fecha)}))); // Convertir string a Date
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+        // Aquí podrías mostrar un toast de error
+      } finally {
+        setDataLoaded(true);
+      }
+    }
+    fetchData();
+  }, [setProductos, setClientes, setEmpleados, setVentas]);
+
+  if (!dataLoaded) {
+    return (
+       <div className="flex h-screen items-center justify-center">
+            <p>Cargando datos de la tienda...</p>
+        </div>
+    )
+  }
+
+  return <>{children}</>;
+}
+
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [empleadoActivo] = useAtom(empleadoActivoAtom)
@@ -28,14 +71,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const rol = empleadoActivo.rol;
             const paginaPermitida = rutasPermitidas[rol]?.includes(pathname);
             
-            // Caso especial: La ruta '/' es para productos, solo para admin e inventario.
             if (pathname === '/' && rol === 'cajero') {
                  router.push('/vender');
                  return;
             }
 
             if (!paginaPermitida) {
-                // Si no tiene permiso, lo redirigimos a su "home" por defecto.
                 if (rol === 'cajero') router.push('/vender');
                 else router.push('/');
             }
@@ -44,31 +85,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [empleadoActivo, pathname, router])
 
 
-  if (!empleadoActivo && pathname !== '/login') {
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
+  if (!empleadoActivo) {
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Redirigiendo al login...</p>
         </div>
     );
   }
-  
-  if (empleadoActivo && pathname === '/login') {
-      return (
-        <div className="flex h-screen items-center justify-center">
-            <p>Ya has iniciado sesión. Redirigiendo...</p>
-        </div>
-    );
-  }
 
-  // Si el empleado está cargado pero no tiene permisos para la ruta actual, mostramos un loader mientras redirige
-  if (empleadoActivo && !rutasPermitidas[empleadoActivo.rol]?.includes(pathname)) {
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <p>No tienes permiso para acceder a esta página. Redirigiendo...</p>
-        </div>
-    );
-  }
-
-
-  return <>{children}</>
+  return <DataProvider>{children}</DataProvider>;
 }

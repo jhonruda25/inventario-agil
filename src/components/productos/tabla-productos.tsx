@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Search, ChevronDown, Upload } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Search, ChevronDown, Upload, Trash2 } from "lucide-react"
 import { useAtom } from 'jotai'
 
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +35,8 @@ import { DialogoSugerenciaIA } from "./dialogo-sugerencia-ia"
 import { DialogoCargaMasiva } from "./dialogo-carga-masiva"
 import { useToast } from "@/hooks/use-toast"
 import { productosAtom } from "@/lib/state"
+import { guardarProducto, eliminarProducto as eliminarProductoAction, cargaMasivaProductos } from "@/app/actions"
+
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("es-CO", {
@@ -107,7 +109,10 @@ function FilaProducto({
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => onAbrirDialogoIA(producto)}>Sugerencia IA</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onAbrirDialogoEditar(producto)}>Editar</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive" onClick={() => onEliminarProducto(producto.id)}>Eliminar</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={() => onEliminarProducto(producto.id!)}>
+                 <Trash2 className="mr-2 h-4 w-4" />
+                 <span>Eliminar</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </TableCell>
@@ -163,18 +168,44 @@ export function TablaProductos() {
     )
   }, [productos, busqueda])
 
-  const handleGuardarProducto = (productoEditado: Producto) => {
-    setProductos((prev) => {
-      const existe = prev.some((p) => p.id === productoEditado.id)
-      if (existe) {
-        return prev.map((p) =>
-          p.id === productoEditado.id ? productoEditado : p
-        )
-      } else {
-        return [...prev, productoEditado]
-      }
-    })
-    setDialogoAbierto(false)
+  const handleGuardarProducto = async (producto: Omit<Producto, 'id'>) => {
+    try {
+      const id = productoSeleccionado?.id;
+      const productoConId = { ...producto, id };
+      const productoId = await guardarProducto(productoConId);
+
+      const productoGuardado = {
+        ...producto,
+        id: productoId,
+        _id: productoId,
+        ultimaModificacion: new Date().toISOString().split('T')[0]
+      };
+      
+      setProductos((prev) => {
+        const existe = prev.some((p) => p.id === productoId);
+        if (existe) {
+          return prev.map((p) =>
+            p.id === productoId ? productoGuardado : p
+          )
+        } else {
+          return [...prev, productoGuardado]
+        }
+      });
+      
+      toast({
+        title: `Producto ${id ? 'actualizado' : 'creado'}`,
+        description: `El producto ${producto.nombre} ha sido guardado correctamente.`
+      });
+      
+      setDialogoAbierto(false);
+      setProductoSeleccionado(null);
+    } catch(error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error al guardar',
+        description: error instanceof Error ? error.message : 'No se pudo guardar el producto.'
+      })
+    }
   }
 
   const handleAbrirDialogoNuevo = () => {
@@ -192,19 +223,42 @@ export function TablaProductos() {
     setDialogoIAAbierto(true)
   }
 
-  const handleEliminarProducto = (id: string) => {
+  const handleEliminarProducto = async (id: string) => {
     if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-        setProductos((prev) => prev.filter((p) => p.id !== id))
+        try {
+          await eliminarProductoAction(id);
+          setProductos((prev) => prev.filter((p) => p.id !== id))
+           toast({
+            variant: 'destructive',
+            title: 'Producto eliminado'
+          })
+        } catch(error) {
+           toast({
+            variant: 'destructive',
+            title: 'Error al eliminar',
+            description: error instanceof Error ? error.message : 'No se pudo eliminar el producto.'
+          })
+        }
     }
   }
   
-  const handleCargaMasiva = (nuevosProductos: Producto[]) => {
-    setProductos(prev => [...prev, ...nuevosProductos]);
-    setDialogoCargaAbierto(false);
-    toast({
-      title: "Carga Exitosa",
-      description: `Se han añadido ${nuevosProductos.length} productos nuevos.`
-    });
+  const handleCargaMasiva = async (nuevosProductos: Omit<Producto, "id">[]) => {
+    try {
+      await cargaMasivaProductos(nuevosProductos);
+      const productosRefetch = await obtenerProductos();
+      setProductos(productosRefetch);
+      setDialogoCargaAbierto(false);
+      toast({
+        title: "Carga Exitosa",
+        description: `Se han añadido ${nuevosProductos.length} productos nuevos.`
+      });
+    } catch (error) {
+       toast({
+        variant: 'destructive',
+        title: 'Error en la carga masiva',
+        description: error instanceof Error ? error.message : 'No se pudieron guardar los productos.'
+      })
+    }
   }
 
   return (

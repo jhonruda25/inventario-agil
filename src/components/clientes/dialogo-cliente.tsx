@@ -34,7 +34,7 @@ const clienteSchema = z.object({
 type DialogoClienteProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (cliente: Cliente) => void
+  onSave: (cliente: Omit<Cliente, 'id'>) => void
   cliente: Cliente | null
 }
 
@@ -65,15 +65,7 @@ export function DialogoCliente({ open, onOpenChange, onSave, cliente }: DialogoC
   }, [cliente, open, form])
 
   function onSubmit(values: z.infer<typeof clienteSchema>) {
-    const clienteAGuardar: Cliente = {
-      ...(cliente || { 
-        id: `cli-${Date.now()}`,
-        historialVentasIds: [],
-        puntos: 0,
-       }),
-      ...values,
-    };
-    onSave(clienteAGuardar)
+     onSave({ ...values, historialVentasIds: [], puntos: 0 });
   }
 
   return (

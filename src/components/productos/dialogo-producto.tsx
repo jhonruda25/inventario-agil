@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import type { Producto, Variante } from "@/lib/types"
+import type { Producto } from "@/lib/types"
 import { PlusCircle, Trash2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
@@ -44,7 +44,7 @@ const productoSchema = z.object({
 type DialogoProductoProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (producto: Producto) => void
+  onSave: (producto: Omit<Producto, 'id'>) => void
   producto: Producto | null
 }
 
@@ -64,33 +64,32 @@ export function DialogoProducto({ open, onOpenChange, onSave, producto }: Dialog
   });
 
   React.useEffect(() => {
-    if (producto) {
-      form.reset({
-        nombre: producto.nombre,
-        stockMinimo: producto.stockMinimo,
-        variantes: producto.variantes,
-      })
-    } else {
-      form.reset({
-        nombre: "",
-        stockMinimo: 10,
-        variantes: [{ id: `var-${Date.now()}`, nombre: "Estándar", sku: "", cantidad: 0, precio: 0 }],
-      })
+    if (open) {
+        if (producto) {
+            form.reset({
+                nombre: producto.nombre,
+                stockMinimo: producto.stockMinimo,
+                variantes: producto.variantes,
+            })
+        } else {
+            form.reset({
+                nombre: "",
+                stockMinimo: 10,
+                variantes: [{ id: `var-${Date.now()}`, nombre: "Estándar", sku: "", cantidad: 0, precio: 0 }],
+            })
+        }
     }
   }, [producto, open, form])
 
   function onSubmit(values: z.infer<typeof productoSchema>) {
-    const productoAGuardar: Producto = {
-      ...(producto || { 
-        id: `prod-${Date.now()}`,
+    const productoSinId = {
+        ...values,
         ultimaModificacion: new Date().toISOString().split('T')[0],
-        historialVentas: [],
-        tasaVentaDiaria: 0,
-        leadTime: 7,
-       }),
-      ...values,
+        historialVentas: producto?.historialVentas || [],
+        tasaVentaDiaria: producto?.tasaVentaDiaria || 0,
+        leadTime: producto?.leadTime || 7,
     };
-    onSave(productoAGuardar)
+    onSave(productoSinId);
   }
 
   return (
@@ -232,5 +231,3 @@ export function DialogoProducto({ open, onOpenChange, onSave, producto }: Dialog
     </Dialog>
   )
 }
-
-    

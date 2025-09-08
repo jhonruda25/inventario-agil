@@ -15,6 +15,7 @@ import {
   PlusCircle,
   UserCog,
   LogOut,
+  Trash2
 } from 'lucide-react'
 import { useAtom } from 'jotai'
 import { useRouter } from "next/navigation"
@@ -50,6 +51,7 @@ import { clientesAtom, ventasAtom, empleadoActivoAtom } from "@/lib/state"
 import type { Cliente } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { DialogoCliente } from "@/components/clientes/dialogo-cliente"
+import { guardarCliente, eliminarCliente as eliminarClienteAction } from "@/app/actions"
 
 
 const formatCurrency = (amount: number) => {
@@ -70,23 +72,63 @@ export default function ClientesPage() {
   const [dialogoAbierto, setDialogoAbierto] = React.useState(false)
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState<Cliente | null>(null)
 
-  const handleGuardarCliente = (clienteGuardado: Cliente) => {
-    setClientes((prev) => {
-      const existe = prev.some((c) => c.id === clienteGuardado.id)
-      if (existe) {
-        return prev.map((c) =>
-          c.id === clienteGuardado.id ? clienteGuardado : c
-        )
-      } else {
-        return [...prev, clienteGuardado]
+  const handleGuardarCliente = async (cliente: Omit<Cliente, 'id'>) => {
+    try {
+      const id = clienteSeleccionado?.id;
+      const clienteConId = { ...cliente, id };
+      const clienteId = await guardarCliente(clienteConId);
+      
+      const clienteGuardado = {
+        ...cliente,
+        id: clienteId,
+        _id: clienteId
       }
-    })
-    toast({
-        title: `Cliente ${clienteGuardado.id ? 'actualizado' : 'creado'}`,
-        description: `El cliente ${clienteGuardado.nombre} ha sido guardado correctamente.`
-    })
-    setDialogoAbierto(false)
+
+      setClientes((prev) => {
+        const existe = prev.some((c) => c.id === clienteId);
+        if (existe) {
+          return prev.map((c) =>
+            c.id === clienteId ? clienteGuardado : c
+          )
+        } else {
+          return [...prev, clienteGuardado]
+        }
+      })
+      toast({
+          title: `Cliente ${id ? 'actualizado' : 'creado'}`,
+          description: `El cliente ${cliente.nombre} ha sido guardado correctamente.`
+      })
+      setDialogoAbierto(false)
+      setClienteSeleccionado(null)
+    } catch(error) {
+       toast({
+        variant: 'destructive',
+        title: 'Error al guardar',
+        description: error instanceof Error ? error.message : 'No se pudo guardar el cliente.'
+      })
+    }
   }
+  
+  const handleEliminarCliente = async (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar a este cliente? Esta acción no se puede deshacer.')) return;
+    
+    try {
+      await eliminarClienteAction(id);
+      setClientes(prev => prev.filter(c => c.id !== id));
+       toast({
+        variant: 'destructive',
+        title: 'Cliente eliminado',
+        description: 'El cliente ha sido eliminado de la base de datos.'
+      })
+    } catch (error) {
+       toast({
+        variant: 'destructive',
+        title: 'Error al eliminar',
+        description: error instanceof Error ? error.message : 'No se pudo eliminar el cliente.'
+      })
+    }
+  }
+
 
   const handleAbrirDialogoNuevo = () => {
     setClienteSeleccionado(null)
@@ -297,7 +339,7 @@ export default function ClientesPage() {
                 <TableBody>
                   {clientes.length > 0 ? (
                     clientes.map((cliente) => {
-                      const stats = getEstadisticasCliente(cliente.id)
+                      const stats = getEstadisticasCliente(cliente.id!)
                       return (
                       <TableRow key={cliente.id}>
                         <TableCell className="font-medium">{cliente.nombre}</TableCell>
@@ -323,8 +365,11 @@ export default function ClientesPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                               <DropdownMenuItem onClick={() => handleAbrirDialogoEditar(cliente)}>Editar</DropdownMenuItem>
-                              <DropdownMenuItem>Ver Compras</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">Eliminar</DropdownMenuItem>
+                              <DropdownMenuItem disabled>Ver Compras</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleEliminarCliente(cliente.id!)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Eliminar</span>
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
