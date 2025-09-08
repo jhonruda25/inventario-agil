@@ -12,7 +12,8 @@ import {
   Package,
   Video,
   VideoOff,
-  X
+  X,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription
+} from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge";
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -48,10 +57,16 @@ import { Label } from "@/components/ui/label";
 
 
 import { productos as productosIniciales } from "@/lib/data";
-import type { Producto } from "@/lib/types";
+import type { Producto, Variante } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
-type CarritoItem = Producto & { cantidadEnCarrito: number };
+type CarritoItem = {
+  productoId: string;
+  variante: Variante;
+  nombreProducto: string;
+  cantidadEnCarrito: number;
+};
+
 
 export default function VenderPage() {
   const [productos] = React.useState<Producto[]>(productosIniciales);
@@ -60,6 +75,9 @@ export default function VenderPage() {
   const [montoPagado, setMontoPagado] = React.useState<string>("");
   const [cambio, setCambio] = React.useState<number | null>(null);
   const { toast } = useToast();
+  const [dialogoVariantesAbierto, setDialogoVariantesAbierto] = React.useState(false);
+  const [productoSeleccionado, setProductoSeleccionado] = React.useState<Producto | null>(null);
+
 
   // --- Estados para el escáner ---
   const [isScanning, setIsScanning] = React.useState(false);
@@ -67,7 +85,7 @@ export default function VenderPage() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const totalCarrito = React.useMemo(() => {
-    return carrito.reduce((total, item) => total + item.precio * item.cantidadEnCarrito, 0);
+    return carrito.reduce((total, item) => total + item.variante.precio * item.cantidadEnCarrito, 0);
   }, [carrito]);
 
   const productosFiltrados = React.useMemo(() => {
@@ -75,17 +93,26 @@ export default function VenderPage() {
     return productos.filter(
       (p) =>
         p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        p.sku.toLowerCase().includes(busqueda.toLowerCase())
+        p.variantes.some(v => v.sku.toLowerCase().includes(busqueda.toLowerCase()))
     );
   }, [productos, busqueda]);
 
-  const agregarAlCarrito = React.useCallback((producto: Producto) => {
+  const handleSeleccionProducto = (producto: Producto) => {
+    if (producto.variantes.length === 1) {
+      agregarAlCarrito(producto, producto.variantes[0]);
+    } else {
+      setProductoSeleccionado(producto);
+      setDialogoVariantesAbierto(true);
+    }
+  }
+  
+  const agregarAlCarrito = React.useCallback((producto: Producto, variante: Variante) => {
     setCarrito((prev) => {
-      const itemExistente = prev.find((item) => item.id === producto.id);
+      const itemExistente = prev.find((item) => item.variante.id === variante.id);
       if (itemExistente) {
-        if (itemExistente.cantidadEnCarrito < producto.cantidad) {
+        if (itemExistente.cantidadEnCarrito < variante.cantidad) {
           return prev.map((item) =>
-            item.id === producto.id
+            item.variante.id === variante.id
               ? { ...item, cantidadEnCarrito: item.cantidadEnCarrito + 1 }
               : item
           );
@@ -93,28 +120,30 @@ export default function VenderPage() {
            toast({
             variant: "destructive",
             title: "Stock insuficiente",
-            description: `No hay más stock para ${producto.nombre}.`,
+            description: `No hay más stock para ${producto.nombre} (${variante.nombre}).`,
           });
           return prev;
         }
       } else {
-        if (producto.cantidad > 0) {
-          return [...prev, { ...producto, cantidadEnCarrito: 1 }];
+        if (variante.cantidad > 0) {
+          return [...prev, { productoId: producto.id, nombreProducto: producto.nombre, variante, cantidadEnCarrito: 1 }];
         } else {
           toast({
             variant: "destructive",
             title: "Sin Stock",
-            description: `${producto.nombre} no tiene stock disponible.`,
+            description: `${producto.nombre} (${variante.nombre}) no tiene stock disponible.`,
           });
           return prev;
         }
       }
     });
     setBusqueda("");
+    setDialogoVariantesAbierto(false);
+    setProductoSeleccionado(null);
   }, [toast]);
   
-  const eliminarDelCarrito = (productoId: string) => {
-    setCarrito(prev => prev.filter(item => item.id !== productoId));
+  const eliminarDelCarrito = (varianteId: string) => {
+    setCarrito(prev => prev.filter(item => item.variante.id !== varianteId));
   };
 
   const calcularCambio = () => {
@@ -149,7 +178,11 @@ export default function VenderPage() {
     }).format(amount);
   };
   
-  const stockBajoCount = productosIniciales.filter(p => p.cantidad <= p.stockMinimo).length;
+  const stockBajoCount = productosIniciales.filter(p => {
+    const stockTotal = p.variantes.reduce((sum, v) => sum + v.cantidad, 0);
+    return stockTotal > 0 && stockTotal <= p.stockMinimo;
+  }).length;
+
 
   // --- Lógica de la cámara ---
   React.useEffect(() => {
@@ -191,16 +224,27 @@ export default function VenderPage() {
         // En una implementación real, aquí se procesaría el frame del video
         // para detectar un código de barras.
         // Por ahora, simulamos la detección de un producto aleatorio.
-        const skus = productos.map(p => p.sku);
-        const randomSku = skus[Math.floor(Math.random() * skus.length)];
-        const productoEncontrado = productos.find(p => p.sku === randomSku);
+        const allSkus = productos.flatMap(p => p.variantes.map(v => v.sku));
+        const randomSku = allSkus[Math.floor(Math.random() * allSkus.length)];
         
-        if (productoEncontrado) {
+        let productoEncontrado: Producto | undefined;
+        let varianteEncontrada: Variante | undefined;
+
+        for (const p of productos) {
+            const v = p.variantes.find(v => v.sku === randomSku);
+            if (v) {
+                productoEncontrado = p;
+                varianteEncontrada = v;
+                break;
+            }
+        }
+        
+        if (productoEncontrado && varianteEncontrada) {
           toast({
             title: "Producto Escaneado",
-            description: `${productoEncontrado.nombre} añadido al carrito.`,
+            description: `${productoEncontrado.nombre} (${varianteEncontrada.nombre}) añadido al carrito.`,
           });
-          agregarAlCarrito(productoEncontrado);
+          agregarAlCarrito(productoEncontrado, varianteEncontrada);
         }
       }, 3000); // Simula un escaneo cada 3 segundos
 
@@ -371,13 +415,15 @@ export default function VenderPage() {
                           <div
                             key={p.id}
                             className="flex justify-between items-center p-2 hover:bg-muted rounded-md cursor-pointer"
-                            onClick={() => agregarAlCarrito(p)}
+                            onClick={() => handleSeleccionProducto(p)}
                           >
                             <div>
                               <p className="font-medium">{p.nombre}</p>
-                              <p className="text-sm text-muted-foreground">SKU: {p.sku} - Stock: {p.cantidad}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {p.variantes.length} {p.variantes.length > 1 ? 'variantes' : 'variante'} disponible(s)
+                              </p>
                             </div>
-                            <p className="font-semibold">{formatCurrency(p.precio)}</p>
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
                           </div>
                         ))}
                       </CardContent>
@@ -401,15 +447,18 @@ export default function VenderPage() {
                         <TableBody>
                           {carrito.length > 0 ? (
                             carrito.map((item) => (
-                              <TableRow key={item.id}>
-                                <TableCell className="font-medium">{item.nombre}</TableCell>
+                              <TableRow key={item.variante.id}>
+                                <TableCell className="font-medium">
+                                  {item.nombreProducto}
+                                  <span className="text-muted-foreground text-sm block">{item.variante.nombre}</span>
+                                </TableCell>
                                 <TableCell>{item.cantidadEnCarrito}</TableCell>
-                                <TableCell className="text-right">{formatCurrency(item.precio)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(item.variante.precio)}</TableCell>
                                 <TableCell className="text-right">
-                                  {formatCurrency(item.precio * item.cantidadEnCarrito)}
+                                  {formatCurrency(item.variante.precio * item.cantidadEnCarrito)}
                                 </TableCell>
                                 <TableCell>
-                                   <Button variant="ghost" size="icon" onClick={() => eliminarDelCarrito(item.id)}>
+                                   <Button variant="ghost" size="icon" onClick={() => eliminarDelCarrito(item.variante.id)}>
                                       <X className="h-4 w-4 text-destructive" />
                                   </Button>
                                 </TableCell>
@@ -466,8 +515,42 @@ export default function VenderPage() {
           </div>
         </main>
       </div>
+      <Dialog open={dialogoVariantesAbierto} onOpenChange={setDialogoVariantesAbierto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Seleccionar Variante</DialogTitle>
+            <DialogDescription>
+              El producto "{productoSeleccionado?.nombre}" tiene múltiples variantes. Por favor, selecciona una.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Variante</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead className="text-right">Stock</TableHead>
+                    <TableHead className="text-right">Precio</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productoSeleccionado?.variantes.map(v => (
+                    <TableRow 
+                      key={v.id} 
+                      onClick={() => agregarAlCarrito(productoSeleccionado, v)} 
+                      className="cursor-pointer hover:bg-muted"
+                    >
+                      <TableCell>{v.nombre}</TableCell>
+                      <TableCell><Badge variant="outline">{v.sku}</Badge></TableCell>
+                      <TableCell className="text-right">{v.cantidad}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(v.precio)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-    

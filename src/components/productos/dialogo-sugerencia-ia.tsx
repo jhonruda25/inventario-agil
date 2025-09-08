@@ -46,6 +46,8 @@ export function DialogoSugerenciaIA({ open, onOpenChange, producto }: DialogoSug
   const [sugerencia, setSugerencia] = React.useState<SugerirReposicionStockOutput | null>(null)
   const [loading, setLoading] = React.useState(false)
   const { toast } = useToast()
+  
+  const stockTotal = producto.variantes.reduce((sum, v) => sum + v.cantidad, 0);
 
   const form = useForm<z.infer<typeof sugerenciaSchema>>({
     resolver: zodResolver(sugerenciaSchema),
@@ -72,7 +74,7 @@ export function DialogoSugerenciaIA({ open, onOpenChange, producto }: DialogoSug
     try {
       const resultado = await obtenerSugerenciaReposicion({
         ...values,
-        stockActual: producto.cantidad,
+        stockActual: stockTotal,
         historialVentas: JSON.stringify(producto.historialVentas),
       })
       setSugerencia(resultado)
@@ -93,7 +95,7 @@ export function DialogoSugerenciaIA({ open, onOpenChange, producto }: DialogoSug
         <DialogHeader>
           <DialogTitle>Sugerencia de Reposición con IA</DialogTitle>
           <DialogDescription>
-            Analiza el stock de <strong>{producto.nombre}</strong> (Actual: {producto.cantidad} uds.) para obtener una recomendación de compra.
+            Analiza el stock de <strong>{producto.nombre}</strong> (Actual: {stockTotal} uds.) para obtener una recomendación de compra.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">

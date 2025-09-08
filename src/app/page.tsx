@@ -24,7 +24,10 @@ import { productos as productosIniciales } from '@/lib/data'
 import { Badge } from '@/components/ui/badge'
 
 export default function Dashboard() {
-  const stockBajoCount = productosIniciales.filter(p => p.cantidad <= p.stockMinimo).length;
+  const stockBajoCount = productosIniciales.filter(p => {
+    const stockTotal = p.variantes.reduce((sum, v) => sum + v.cantidad, 0);
+    return stockTotal > 0 && stockTotal <= p.stockMinimo;
+  }).length;
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
