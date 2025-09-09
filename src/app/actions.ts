@@ -1,187 +1,296 @@
 'use server';
 
-import { sugerirReposicionStock, type SugerirReposicionStockInput, type SugerirReposicionStockOutput } from '@/ai/flows/sugerencia-reposicion-stock';
-import { connectToDatabase } from '@/lib/mongodb';
-import type { Cliente, Empleado, Producto, Venta } from '@/lib/types';
-import { ObjectId } from 'mongodb';
+import { z } from 'zod';
+import { Product, Sale, Client, Employee } from './lib/types';
+import {
+  fetchProducts,
+  fetchProductById,
+  insertProduct,
+  updateProduct,
+  deleteProduct,
+  fetchClients,
+  fetchClientById,
+  insertClient,
+  updateClient,
+  deleteClient,
+  fetchEmployees,
+  fetchEmployeeById,
+  insertEmployee,
+  updateEmployee,
+  deleteEmployee,
+  fetchSales,
+  insertSale,
+} from './lib/data';
+import { revalidatePath } from 'next/cache';
+import { runSugerenciaReposicionStock } from '@/ai/flows/sugerencia-reposicion-stock';
 
-// --- Funciones de Productos ---
+// Esquemas de validación...
+const ProductSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, 'El nombre es requerido'),
+  price: z.coerce.number().gt(0, 'El precio debe ser mayor a 0'),
+  stock: z.coerce.number().int().nonnegative('El stock no puede ser negativo'),
+  category: z.string().optional(),
+  code: z.string().min(1, 'El código es requerido'),
+};
 
-export async function obtenerProductos() {
-  const { db } = await connectToDatabase();
-  const productos = await db.collection('productos').find({}).toArray();
-  return JSON.parse(JSON.stringify(productos)) as Producto[];
+const CreateProduct = ProductSchema.omit({ id: true });
+const UpdateProduct = ProductSchema;
+
+const ClientSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, 'El nombre es requerido'),
+    email: z.string().email('Email no válido'),
+    phone: z.string().optional(),
+    document: z.string().min(1, 'El documento es requerido')
+});
+
+const CreateClient = ClientSchema.omit({ id: true });
+const UpdateClient = ClientSchema;
+
+const EmployeeSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, 'El nombre es requerido'),
+    email: z.string().email('Email no válido'),
+    phone: z.string().optional(),
+    position: z.string().min(1, 'La posición es requerida')
+});
+
+const CreateEmployee = EmployeeSchema.omit({ id: true });
+const UpdateEmployee = EmployeeSchema;
+
+// --- Acciones de Productos ---
+
+export async function crearProducto(formData: FormData) {
+  const validatedFields = CreateProduct.safeParse({
+    name: formData.get('name'),
+    price: formData.get('price'),
+    stock: formData.get('stock'),
+    category: formData.get('category'),
+    code: formData.get('code'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Error de validación. No se pudo crear el producto.',
+    };
+  }
+
+  try {
+    const newProduct: Omit<Product, '_id'> = {
+      name: validatedFields.data.name,
+      price: validatedFields.data.price,
+      stock: validatedFields.data.stock,
+      category: validatedFields.data.category || '',
+      code: validatedFields.data.code,
+    };
+    await insertProduct(newProduct);
+  } catch (error) {
+    return { message: 'Error de base de datos: No se pudo crear el producto.' };
+  }
+
+  revalidatePath('/');
+  return { message: 'Producto creado exitosamente.' };
 }
 
-export async function guardarProducto(producto: Omit<Producto, 'id'> & { id?: string }) {
-  const { db } = await connectToDatabase();
-  const { id, ...productoData } = producto;
+export async function editarProducto(id: string, formData: FormData) {
+    const validatedFields = UpdateProduct.safeParse({
+        id: id,
+        name: formData.get('name'),
+        price: formData.get('price'),
+        stock: formData.get('stock'),
+        category: formData.get('category'),
+        code: formData.get('code'),
+    });
 
-  if (id) {
-    // Actualizar producto existente
-    await db.collection('productos').updateOne({ _id: new ObjectId(id) }, { $set: productoData });
-    return id;
-  } else {
-    // Crear nuevo producto
-    const result = await db.collection('productos').insertOne(productoData);
-    return result.insertedId.toHexString();
-  }
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: 'Error de validación. No se pudo actualizar el producto.',
+        };
+    }
+
+    try {
+        const productToUpdate: Product = {
+            _id: validatedFields.data.id,
+            name: validatedFields.data.name,
+            price: validatedFields.data.price,
+            stock: validatedFields.data.stock,
+            category: validatedFields.data.category || '',
+            code: validatedFields.data.code,
+        };
+        await updateProduct(productToUpdate);
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo actualizar el producto.' };
+    }
+
+    revalidatePath('/');
+    return { message: 'Producto actualizado exitosamente.' };
 }
 
 export async function eliminarProducto(id: string) {
-    const { db } = await connectToDatabase();
-    await db.collection('productos').deleteOne({ _id: new ObjectId(id) });
+    try {
+        await deleteProduct(id);
+        revalidatePath('/');
+        return { message: 'Producto eliminado.' };
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo eliminar el producto.' };
+    }
 }
 
-export async function cargaMasivaProductos(productos: (Omit<Producto, 'id'>)[]) {
-   const { db } = await connectToDatabase();
-   await db.collection('productos').insertMany(productos);
+// --- Acciones de Clientes ---
+
+export async function crearCliente(formData: FormData) {
+    const validatedFields = CreateClient.safeParse({
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        document: formData.get('document'),
+    });
+
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: 'Error de validación. No se pudo crear el cliente.',
+        };
+    }
+
+    try {
+        const newClient: Omit<Client, '_id'> = { ...validatedFields.data };
+        await insertClient(newClient);
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo crear el cliente.' };
+    }
+
+    revalidatePath('/clientes');
+    return { message: 'Cliente creado exitosamente.' };
 }
 
+export async function editarCliente(id: string, formData: FormData) {
+    const validatedFields = UpdateClient.safeParse({
+        id: id,
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        document: formData.get('document'),
+    });
 
-// --- Funciones de Empleados ---
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: 'Error de validación. No se pudo actualizar el cliente.',
+        };
+    }
+    
+    try {
+        const clientToUpdate: Client = { _id: id, ...validatedFields.data };
+        await updateClient(clientToUpdate);
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo actualizar el cliente.' };
+    }
 
-export async function obtenerEmpleados() {
-  const { db } = await connectToDatabase();
-  const empleados = await db.collection('empleados').find({}).toArray();
-  return JSON.parse(JSON.stringify(empleados)) as Empleado[];
+    revalidatePath('/clientes');
+    return { message: 'Cliente actualizado exitosamente.' };
 }
 
-export async function guardarEmpleado(empleado: Omit<Empleado, 'id'> & { id?: string }) {
-  const { db } = await connectToDatabase();
-  const { id, ...empleadoData } = empleado;
+export async function eliminarCliente(id: string) {
+    try {
+        await deleteClient(id);
+        revalidatePath('/clientes');
+        return { message: 'Cliente eliminado.' };
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo eliminar el cliente.' };
+    }
+}
 
-  if (id) {
-    await db.collection('empleados').updateOne({ _id: new ObjectId(id) }, { $set: empleadoData });
-    return id;
-  } else {
-    const result = await db.collection('empleados').insertOne(empleadoData);
-    return result.insertedId.toHexString();
-  }
+// --- Acciones de Empleados ---
+
+export async function crearEmpleado(formData: FormData) {
+    const validatedFields = CreateEmployee.safeParse({
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        position: formData.get('position'),
+    });
+
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: 'Error de validación. No se pudo crear el empleado.',
+        };
+    }
+
+    try {
+        const newEmployee: Omit<Employee, '_id'> = { ...validatedFields.data };
+        await insertEmployee(newEmployee);
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo crear el empleado.' };
+    }
+
+    revalidatePath('/empleados');
+    return { message: 'Empleado creado exitosamente.' };
+}
+
+export async function editarEmpleado(id: string, formData: FormData) {
+    const validatedFields = UpdateEmployee.safeParse({
+        id: id,
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        position: formData.get('position'),
+    });
+
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: 'Error de validación. No se pudo actualizar el empleado.',
+        };
+    }
+    
+    try {
+        const employeeToUpdate: Employee = { _id: id, ...validatedFields.data };
+        await updateEmployee(employeeToUpdate);
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo actualizar el empleado.' };
+    }
+
+    revalidatePath('/empleados');
+    return { message: 'Empleado actualizado exitosamente.' };
 }
 
 export async function eliminarEmpleado(id: string) {
-    const { db } = await connectToDatabase();
-    await db.collection('empleados').deleteOne({ _id: new ObjectId(id) });
-}
-
-
-// --- Funciones de Clientes ---
-
-export async function obtenerClientes() {
-  const { db } = await connectToDatabase();
-  const clientes = await db.collection('clientes').find({}).toArray();
-  return JSON.parse(JSON.stringify(clientes)) as Cliente[];
-}
-
-export async function guardarCliente(cliente: Omit<Cliente, 'id'> & { id?: string }) {
-  const { db } = await connectToDatabase();
-  const { id, ...clienteData } = cliente;
-  
-  if (id) {
-    await db.collection('clientes').updateOne({ _id: new ObjectId(id) }, { $set: clienteData });
-    return id;
-  } else {
-    const result = await db.collection('clientes').insertOne(clienteData);
-    return result.insertedId.toHexString();
-  }
-}
-
-// --- Funciones de Ventas ---
-
-export async function obtenerVentas() {
-  const { db } = await connectToDatabase();
-  const ventas = await db.collection('ventas').find({}).sort({ fecha: -1 }).toArray();
-  return JSON.parse(JSON.stringify(ventas)) as Venta[];
-}
-
-export async function finalizarVenta(venta: Omit<Venta, 'id'>): Promise<string> {
-    const { db } = await connectToDatabase();
-    const session = (await connectToDatabase()).client.startSession();
-    
-    let ventaId;
-
     try {
-        await session.withTransaction(async () => {
-            // 1. Guardar la venta
-            const result = await db.collection('ventas').insertOne(venta, { session });
-            ventaId = result.insertedId;
-
-            // 2. Actualizar el stock de los productos
-            for (const item of venta.items) {
-                const updateResult = await db.collection('productos').updateOne(
-                    { _id: new ObjectId(item.productoId), "variantes.id": item.variante.id },
-                    { $inc: { "variantes.$.cantidad": -item.cantidadEnCarrito } },
-                    { session }
-                );
-
-                if (updateResult.matchedCount === 0) {
-                    throw new Error(`No se pudo encontrar el producto con la variante: ${item.nombreProducto} (${item.variante.nombre})`);
-                }
-                 if (updateResult.modifiedCount === 0) {
-                    // This could happen if another transaction modified the stock.
-                    // We should check if the stock is still sufficient.
-                    console.warn(`No se modificó el stock para ${item.nombreProducto}. Esto puede ser esperado si la cantidad no cambió.`);
-                }
-            }
-        });
-    } finally {
-        await session.endSession();
+        await deleteEmployee(id);
+        revalidatePath('/empleados');
+        return { message: 'Empleado eliminado.' };
+    } catch (error) {
+        return { message: 'Error de base de datos: No se pudo eliminar el empleado.' };
     }
-    
-    if (!ventaId) {
-        throw new Error("No se pudo completar la transacción de venta.");
-    }
-    
-    return ventaId.toHexString();
 }
 
-export async function procesarDevolucion(ventaId: string): Promise<void> {
-    const { db } = await connectToDatabase();
-    const session = (await connectToDatabase()).client.startSession();
+// --- Acciones de Ventas ---
 
+export async function crearVenta(sale: Omit<Sale, '_id'>) {
     try {
-        await session.withTransaction(async () => {
-            const ventaADevolver = await db.collection('ventas').findOne({ _id: new ObjectId(ventaId) });
-            if (!ventaADevolver || ventaADevolver.estado === 'devuelta') {
-                throw new Error("La venta no existe o ya ha sido devuelta.");
-            }
-
-            // 1. Actualizar el estado de la venta
-            await db.collection('ventas').updateOne(
-                { _id: new ObjectId(ventaId) },
-                { $set: { estado: 'devuelta' } },
-                { session }
-            );
-
-            // 2. Devolver los items al stock
-            for (const item of ventaADevolver.items) {
-                const updateResult = await db.collection('productos').updateOne(
-                    { _id: new ObjectId(item.productoId), "variantes.id": item.variante.id },
-                    { $inc: { "variantes.$.cantidad": item.cantidadEnCarrito } },
-                    { session }
-                );
-                 if (updateResult.matchedCount === 0) {
-                    throw new Error(`Producto a devolver no encontrado: ${item.nombreProducto}`);
-                }
-            }
-        });
-    } finally {
-        await session.endSession();
+        await insertSale(sale);
+        // Revalidar los productos para reflejar el nuevo stock
+        revalidatePath('/');
+        // Revalidar el historial de ventas
+        revalidatePath('/historial');
+        return { success: true, message: 'Venta registrada exitosamente.' };
+    } catch (error) {
+        return { success: false, message: 'Error de base de datos: No se pudo registrar la venta.' };
     }
 }
 
 
-// --- Funciones de IA ---
-
-export async function obtenerSugerenciaReposicion(input: SugerirReposicionStockInput): Promise<SugerirReposicionStockOutput> {
-  try {
-    const sugerencia = await sugerirReposicionStock(input);
-    return sugerencia;
-  } catch (error) {
-    console.error('Error al obtener sugerencia de la IA:', error);
-    // En un caso real, podríamos devolver un objeto de error estandarizado.
-    // Por ahora, relanzamos el error para que el cliente lo maneje.
-    throw new Error('No se pudo generar la sugerencia. Inténtelo de nuevo.');
+export async function obtenerSugerenciaDeStock() {
+    try {
+      const sugerencia = await runSugerenciaReposicionStock();
+      return sugerencia;
+    } catch (error: any) {
+      console.error('Error al obtener sugerencia de stock:', error);
+      return `Error al generar la sugerencia: ${error.message}`;
+    }
   }
-}

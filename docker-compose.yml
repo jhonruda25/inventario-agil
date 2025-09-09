@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        - MONGODB_URI=mongodb://mongo:27017/tienda-agil
     container_name: tienda-agil-web
     ports:
       - "9002:3000"

@@ -15,6 +15,11 @@ RUN npm install
 # 5. Copiar Código Fuente: Copiamos el resto del código de la aplicación.
 COPY . .
 
+# Argumento para la URI de MongoDB en tiempo de construcción
+ARG MONGODB_URI
+# Establecer la variable de entorno para el proceso de construcción
+ENV MONGODB_URI=${MONGODB_URI}
+
 # 6. Construir la Aplicación: Compilamos la aplicación de Next.js para producción.
 RUN npm run build
 
