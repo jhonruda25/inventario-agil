@@ -32,7 +32,7 @@ const ProductSchema = z.object({
   stock: z.coerce.number().int().nonnegative('El stock no puede ser negativo'),
   category: z.string().optional(),
   code: z.string().min(1, 'El código es requerido'),
-};
+});
 
 const CreateProduct = ProductSchema.omit({ id: true });
 const UpdateProduct = ProductSchema;
@@ -293,4 +293,4 @@ export async function obtenerSugerenciaDeStock() {
       console.error('Error al obtener sugerencia de stock:', error);
       return `Error al generar la sugerencia: ${error.message}`;
     }
-  }
+}
