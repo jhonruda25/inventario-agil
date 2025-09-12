@@ -1,7 +1,7 @@
-
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { productos as productosIniciales, clientes as clientesIniciales, empleados as empleadosIniciales } from '@/lib/data';
+import { Product, Client, Employee } from '@/lib/types';
 
 export async function GET() {
   try {
@@ -14,9 +14,9 @@ export async function GET() {
     await db.collection('ventas').deleteMany({});
 
     // Insert initial data
-    await db.collection('productos').insertMany(productosIniciales as any[]);
-    await db.collection('clientes').insertMany(clientesIniciales as any[]);
-    await db.collection('empleados').insertMany(empleadosIniciales as any[]);
+    await db.collection<Omit<Product, '_id'>>('productos').insertMany(productosIniciales);
+    await db.collection<Omit<Client, '_id'>>('clientes').insertMany(clientesIniciales);
+    await db.collection<Omit<Employee, '_id'>>('empleados').insertMany(empleadosIniciales);
 
     return NextResponse.json({ message: 'Database seeded successfully' }, { status: 200 });
   } catch (error) {

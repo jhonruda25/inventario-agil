@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, PlusCircle, Search, ChevronDown, Upload, Trash2 } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Search, ChevronDown, Upload, Trash2, Bot } from "lucide-react"
 import { useAtom } from 'jotai'
 
 import { Badge } from "@/components/ui/badge"
@@ -35,7 +35,7 @@ import { DialogoSugerenciaIA } from "./dialogo-sugerencia-ia"
 import { DialogoCargaMasiva } from "./dialogo-carga-masiva"
 import { useToast } from "@/hooks/use-toast"
 import { productosAtom } from "@/lib/state"
-import { guardarProducto, eliminarProducto as eliminarProductoAction, cargaMasivaProductos } from "@/app/actions"
+import { guardarProducto, eliminarProducto as eliminarProductoAction, cargaMasivaProductos, obtenerProductos } from "@/app/actions"
 
 
 const formatCurrency = (amount: number) => {
@@ -107,7 +107,10 @@ function FilaProducto({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => onAbrirDialogoIA(producto)}>Sugerencia IA</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAbrirDialogoIA(producto)}>
+                <Bot className="mr-2 h-4 w-4" />
+                <span>Sugerencia IA</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onAbrirDialogoEditar(producto)}>Editar</DropdownMenuItem>
               <DropdownMenuItem className="text-destructive" onClick={() => onEliminarProducto(producto.id!)}>
                  <Trash2 className="mr-2 h-4 w-4" />
@@ -168,13 +171,13 @@ export function TablaProductos() {
     )
   }, [productos, busqueda])
 
-  const handleGuardarProducto = async (producto: Omit<Producto, 'id'>) => {
+  const handleGuardarProducto = async (producto: Omit<Producto, 'id' | '_id'>) => {
     try {
       const id = productoSeleccionado?.id;
       const productoConId = { ...producto, id };
       const productoId = await guardarProducto(productoConId);
 
-      const productoGuardado = {
+      const productoGuardado: Producto = {
         ...producto,
         id: productoId,
         _id: productoId,
@@ -242,11 +245,13 @@ export function TablaProductos() {
     }
   }
   
-  const handleCargaMasiva = async (nuevosProductos: Omit<Producto, "id">[]) => {
+  const handleCargaMasiva = async (nuevosProductos: Omit<Producto, "id" | "_id">[]) => {
     try {
       await cargaMasivaProductos(nuevosProductos);
-      const productosRefetch = await obtenerProductos();
-      setProductos(productosRefetch);
+      // Refetch all products to get the new ones with their DB-generated IDs
+      const productosActualizados = await obtenerProductos();
+      setProductos(productosActualizados);
+
       setDialogoCargaAbierto(false);
       toast({
         title: "Carga Exitosa",

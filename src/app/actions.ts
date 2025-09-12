@@ -1,37 +1,40 @@
+
 'use server';
 
 import { z } from 'zod';
-import { Product, Sale, Client, Employee } from './lib/types';
+import { Product, Sale, Client, Employee, Venta, Producto, Variante } from '@/lib/types';
+import { connectToDatabase } from '@/lib/mongodb';
 import {
-  fetchProducts,
-  fetchProductById,
   insertProduct,
   updateProduct,
   deleteProduct,
-  fetchClients,
-  fetchClientById,
   insertClient,
   updateClient,
   deleteClient,
-  fetchEmployees,
-  fetchEmployeeById,
   insertEmployee,
   updateEmployee,
   deleteEmployee,
-  fetchSales,
   insertSale,
-} from './lib/data';
+  findProducts,
+  findClients,
+  findEmployees,
+  findVentas,
+  findVentaById,
+  updateVenta,
+  findProductById,
+  insertManyProducts,
+} from '@/lib/data';
 import { revalidatePath } from 'next/cache';
-import { runSugerenciaReposicionStock } from '@/ai/flows/sugerencia-reposicion-stock';
+import { sugerirReposicionStock as runSugerenciaReposicionStock, SugerirReposicionStockInput, SugerirReposicionStockOutput } from '@/ai/flows/sugerencia-reposicion-stock';
+import { ObjectId } from 'mongodb';
+
 
 // Esquemas de validación...
 const ProductSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, 'El nombre es requerido'),
-  price: z.coerce.number().gt(0, 'El precio debe ser mayor a 0'),
-  stock: z.coerce.number().int().nonnegative('El stock no puede ser negativo'),
-  category: z.string().optional(),
-  code: z.string().min(1, 'El código es requerido'),
+  nombre: z.string().min(1, 'El nombre es requerido'),
+  stockMinimo: z.coerce.number().int().nonnegative('El stock mínimo no puede ser negativo'),
+  variantes: z.array(z.any()), // Simplificado por ahora
 });
 
 const CreateProduct = ProductSchema.omit({ id: true });
@@ -39,10 +42,9 @@ const UpdateProduct = ProductSchema;
 
 const ClientSchema = z.object({
     id: z.string(),
-    name: z.string().min(1, 'El nombre es requerido'),
+    nombre: z.string().min(1, 'El nombre es requerido'),
     email: z.string().email('Email no válido'),
-    phone: z.string().optional(),
-    document: z.string().min(1, 'El documento es requerido')
+    telefono: z.string().optional(),
 });
 
 const CreateClient = ClientSchema.omit({ id: true });
@@ -50,83 +52,51 @@ const UpdateClient = ClientSchema;
 
 const EmployeeSchema = z.object({
     id: z.string(),
-    name: z.string().min(1, 'El nombre es requerido'),
-    email: z.string().email('Email no válido'),
-    phone: z.string().optional(),
-    position: z.string().min(1, 'La posición es requerida')
+    nombre: z.string().min(1, 'El nombre es requerido'),
+    rol: z.enum(['administrador', 'cajero', 'inventario']),
+    pin: z.string().length(4, 'El PIN debe tener 4 dígitos'),
 });
 
 const CreateEmployee = EmployeeSchema.omit({ id: true });
 const UpdateEmployee = EmployeeSchema;
 
-// --- Acciones de Productos ---
 
-export async function crearProducto(formData: FormData) {
-  const validatedFields = CreateProduct.safeParse({
-    name: formData.get('name'),
-    price: formData.get('price'),
-    stock: formData.get('stock'),
-    category: formData.get('category'),
-    code: formData.get('code'),
-  });
+// --- OBTENER DATOS ---
 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Error de validación. No se pudo crear el producto.',
-    };
-  }
-
-  try {
-    const newProduct: Omit<Product, '_id'> = {
-      name: validatedFields.data.name,
-      price: validatedFields.data.price,
-      stock: validatedFields.data.stock,
-      category: validatedFields.data.category || '',
-      code: validatedFields.data.code,
-    };
-    await insertProduct(newProduct);
-  } catch (error) {
-    return { message: 'Error de base de datos: No se pudo crear el producto.' };
-  }
-
-  revalidatePath('/');
-  return { message: 'Producto creado exitosamente.' };
+export async function obtenerProductos(): Promise<Producto[]> {
+  return await findProducts();
 }
 
-export async function editarProducto(id: string, formData: FormData) {
-    const validatedFields = UpdateProduct.safeParse({
-        id: id,
-        name: formData.get('name'),
-        price: formData.get('price'),
-        stock: formData.get('stock'),
-        category: formData.get('category'),
-        code: formData.get('code'),
-    });
+export async function obtenerClientes(): Promise<Cliente[]> {
+    return await findClients();
+}
 
-    if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: 'Error de validación. No se pudo actualizar el producto.',
-        };
+export async function obtenerEmpleados(): Promise<Empleado[]> {
+    return await findEmployees();
+}
+
+export async function obtenerVentas(): Promise<Venta[]> {
+    return await findVentas();
+}
+
+
+// --- Acciones de Productos ---
+
+export async function guardarProducto(producto: Omit<Producto, 'id' | '_id'> & { id?: string }) {
+    if (producto.id) {
+        const id = producto.id;
+        delete producto.id;
+        const productoToUpdate: Partial<Producto> = producto;
+        await updateProduct(id, productoToUpdate);
+        revalidatePath('/');
+        return id;
+
+    } else {
+        const newProduct: Omit<Producto, '_id' | 'id'> = producto;
+        const result = await insertProduct(newProduct);
+        revalidatePath('/');
+        return result.insertedId.toString();
     }
-
-    try {
-        const productToUpdate: Product = {
-            _id: validatedFields.data.id,
-            name: validatedFields.data.name,
-            price: validatedFields.data.price,
-            stock: validatedFields.data.stock,
-            category: validatedFields.data.category || '',
-            code: validatedFields.data.code,
-        };
-        await updateProduct(productToUpdate);
-    } catch (error) {
-        return { message: 'Error de base de datos: No se pudo actualizar el producto.' };
-    }
-
-    revalidatePath('/');
-    return { message: 'Producto actualizado exitosamente.' };
 }
 
 export async function eliminarProducto(id: string) {
@@ -139,60 +109,36 @@ export async function eliminarProducto(id: string) {
     }
 }
 
+export async function cargaMasivaProductos(productos: Omit<Producto, 'id' | '_id'>[]) {
+    try {
+        await insertManyProducts(productos);
+        revalidatePath('/');
+    } catch(error) {
+        console.error("Error en cargaMasivaProductos action:", error);
+        throw new Error('Error de base de datos: No se pudieron insertar los productos.');
+    }
+}
+
+
 // --- Acciones de Clientes ---
 
-export async function crearCliente(formData: FormData) {
-    const validatedFields = CreateClient.safeParse({
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
-        document: formData.get('document'),
-    });
+export async function guardarCliente(cliente: Omit<Cliente, 'id' | '_id'> & { id?: string }) {
+    if (cliente.id) {
+        const id = cliente.id;
+        delete cliente.id;
+        const clientToUpdate: Partial<Client> = cliente;
+        await updateClient(id, clientToUpdate);
+        revalidatePath('/clientes');
+        return id;
 
-    if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: 'Error de validación. No se pudo crear el cliente.',
-        };
+    } else {
+        const newClient: Omit<Client, '_id' | 'id'> = cliente;
+        const result = await insertClient(newClient);
+        revalidatePath('/clientes');
+        return result.insertedId.toString();
     }
-
-    try {
-        const newClient: Omit<Client, '_id'> = { ...validatedFields.data };
-        await insertClient(newClient);
-    } catch (error) {
-        return { message: 'Error de base de datos: No se pudo crear el cliente.' };
-    }
-
-    revalidatePath('/clientes');
-    return { message: 'Cliente creado exitosamente.' };
 }
 
-export async function editarCliente(id: string, formData: FormData) {
-    const validatedFields = UpdateClient.safeParse({
-        id: id,
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
-        document: formData.get('document'),
-    });
-
-    if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: 'Error de validación. No se pudo actualizar el cliente.',
-        };
-    }
-    
-    try {
-        const clientToUpdate: Client = { _id: id, ...validatedFields.data };
-        await updateClient(clientToUpdate);
-    } catch (error) {
-        return { message: 'Error de base de datos: No se pudo actualizar el cliente.' };
-    }
-
-    revalidatePath('/clientes');
-    return { message: 'Cliente actualizado exitosamente.' };
-}
 
 export async function eliminarCliente(id: string) {
     try {
@@ -206,57 +152,20 @@ export async function eliminarCliente(id: string) {
 
 // --- Acciones de Empleados ---
 
-export async function crearEmpleado(formData: FormData) {
-    const validatedFields = CreateEmployee.safeParse({
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
-        position: formData.get('position'),
-    });
-
-    if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: 'Error de validación. No se pudo crear el empleado.',
-        };
+export async function guardarEmpleado(empleado: Omit<Employee, 'id' | '_id'> & { id?: string }) {
+    if (empleado.id) {
+        const id = empleado.id;
+        delete empleado.id;
+        const employeeToUpdate: Partial<Employee> = empleado;
+        await updateEmployee(id, employeeToUpdate);
+        revalidatePath('/empleados');
+        return id;
+    } else {
+        const newEmployee: Omit<Employee, '_id' | 'id'> = empleado;
+        const result = await insertEmployee(newEmployee);
+        revalidatePath('/empleados');
+        return result.insertedId.toString();
     }
-
-    try {
-        const newEmployee: Omit<Employee, '_id'> = { ...validatedFields.data };
-        await insertEmployee(newEmployee);
-    } catch (error) {
-        return { message: 'Error de base de datos: No se pudo crear el empleado.' };
-    }
-
-    revalidatePath('/empleados');
-    return { message: 'Empleado creado exitosamente.' };
-}
-
-export async function editarEmpleado(id: string, formData: FormData) {
-    const validatedFields = UpdateEmployee.safeParse({
-        id: id,
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
-        position: formData.get('position'),
-    });
-
-    if (!validatedFields.success) {
-        return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: 'Error de validación. No se pudo actualizar el empleado.',
-        };
-    }
-    
-    try {
-        const employeeToUpdate: Employee = { _id: id, ...validatedFields.data };
-        await updateEmployee(employeeToUpdate);
-    } catch (error) {
-        return { message: 'Error de base de datos: No se pudo actualizar el empleado.' };
-    }
-
-    revalidatePath('/empleados');
-    return { message: 'Empleado actualizado exitosamente.' };
 }
 
 export async function eliminarEmpleado(id: string) {
@@ -271,26 +180,88 @@ export async function eliminarEmpleado(id: string) {
 
 // --- Acciones de Ventas ---
 
-export async function crearVenta(sale: Omit<Sale, '_id'>) {
+export async function finalizarVenta(venta: Omit<Venta, 'id' | '_id'>) {
     try {
-        await insertSale(sale);
-        // Revalidar los productos para reflejar el nuevo stock
+        const { db } = await connectToDatabase();
+        
+        // 1. Insertar la venta
+        const result = await insertSale(venta);
+        const ventaId = result.insertedId.toString();
+
+        // 2. Actualizar el stock de cada producto vendido
+        const bulkOps = venta.items.map(item => {
+            return {
+                updateOne: {
+                    filter: { 
+                        _id: new ObjectId(item.productoId), 
+                        'variantes.id': item.variante.id 
+                    },
+                    update: { 
+                        $inc: { 'variantes.$.cantidad': -item.cantidadEnCarrito } 
+                    }
+                }
+            };
+        });
+
+        if (bulkOps.length > 0) {
+            await db.collection('productos').bulkWrite(bulkOps);
+        }
+
         revalidatePath('/');
-        // Revalidar el historial de ventas
         revalidatePath('/historial');
-        return { success: true, message: 'Venta registrada exitosamente.' };
+        
+        return ventaId;
     } catch (error) {
-        return { success: false, message: 'Error de base de datos: No se pudo registrar la venta.' };
+        console.error("Error al finalizar la venta:", error);
+        throw new Error('Error de base de datos: No se pudo registrar la venta.');
     }
 }
 
 
-export async function obtenerSugerenciaDeStock() {
+export async function procesarDevolucion(ventaId: string) {
     try {
-      const sugerencia = await runSugerenciaReposicionStock();
+        const { db } = await connectToDatabase();
+        const venta = await findVentaById(ventaId);
+
+        if (!venta || venta.estado === 'devuelta') {
+            throw new Error('La venta no existe o ya fue devuelta.');
+        }
+
+        // 1. Restaurar el stock
+        const bulkOps = venta.items.map(item => ({
+            updateOne: {
+                filter: { _id: new ObjectId(item.productoId), 'variantes.id': item.variante.id },
+                update: { $inc: { 'variantes.$.cantidad': item.cantidadEnCarrito } }
+            }
+        }));
+
+        if (bulkOps.length > 0) {
+            await db.collection('productos').bulkWrite(bulkOps);
+        }
+
+        // 2. Actualizar el estado de la venta a 'devuelta'
+        await updateVenta(ventaId, { estado: 'devuelta' });
+
+        revalidatePath('/');
+        revalidatePath('/historial');
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error al procesar la devolución:", error);
+        throw new Error('Error de base de datos: No se pudo procesar la devolución.');
+    }
+}
+
+
+export async function obtenerSugerenciaReposicion(input: SugerirReposicionStockInput): Promise<SugerirReposicionStockOutput> {
+    try {
+      const sugerencia = await runSugerenciaReposicionStock(input);
       return sugerencia;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al obtener sugerencia de stock:', error);
-      return `Error al generar la sugerencia: ${error.message}`;
+      if (error instanceof Error) {
+        throw new Error(`Error al generar la sugerencia: ${error.message}`);
+      }
+      throw new Error('Error al generar la sugerencia: Ocurrió un error desconocido.');
     }
 }
